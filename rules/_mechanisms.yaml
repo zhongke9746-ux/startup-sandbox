@@ -1,0 +1,435 @@
+# 通用机理库 —— 与行业无关的因果骨架
+# 每个行业包只需提供参数（baseline）与槽位映射（slot_map），不重写本文件
+# version 变更须复核所有行业包的 slot_map 是否仍成立
+
+meta:
+  pack_id: mechanisms
+  name: 通用冲击机理库
+  version: 0.1.2
+  updated_at: "2026-11-16"
+  changelog:
+    - "0.1.0 | 2026-11-16 | 初版 18 条机理，四族"
+    - "0.1.1 | 2026-11-16 | 增补 time_profiles.recover + known_gaps（咖啡店演算暴露的 4 个缺口）"
+    - "0.1.2 | 2026-11-16 | 跨行业校验（咖啡/健身/中餐）新增 GAP-05~13；补 baseline_required_fields"
+
+# ── 语义槽位：机理只认槽位，不认行业字段；行业包负责把槽位映射到自己的字段 ──
+slots:
+  fixed_cost:    { desc: 固定运营成本, unit: CNY/month }
+  unit_cost:     { desc: 单位变动成本, unit: CNY/unit }
+  variable_cost: { desc: 随量变化的费用（渠道费/佣金）, unit: CNY }
+  volume:        { desc: 成交/活跃量, unit: count }
+  price:         { desc: 单价, unit: CNY }
+  churn:         { desc: 流失率或复购倒数, unit: percent }
+  capacity:      { desc: 可交付能力, unit: unit/month }
+  revenue:       { desc: 收入, unit: CNY/month }
+  cash:          { desc: 现金, unit: CNY }
+  valuation:     { desc: 估值/融资能力, unit: index }
+
+# ── 统一公式 ──
+# delta = k × baseline_normalized × exposure(0-1) × signal_intensity(0-1)
+# 其中 k 从 k_range 取，baseline_normalized 由行业包给出并归一到 0-1
+formula:
+  multiplicative: "value_t = value_base × (1 ± delta × decay(t))"
+  additive:       "value_t = value_base ± (k_abs × exposure × signal_intensity)"
+
+# ── 时间曲线（v0.1.1 增补 recover）：冲击结束后需要恢复期，不能瞬时复原 ──
+time_profiles:
+  step:    "当月全额，永久生效，decay = 1"
+  ramp:    "N 个月内线性到位，decay = min(1, t/N)"
+  pulse:   "一次性后指数衰减，decay = 0.5^(t/τ)，τ 默认 2 个月"
+  recover: "step 事件结束后，按 recover_months 线性恢复到事件前水平（新增，缺省 = 0 即瞬时恢复）"
+note_recover: "客流/口碑类冲击恢复期通常 1-3 个月；合规类改造不可恢复（已沉没）"
+
+# ── 信号强度判定口径（LLM 用，通用） ──
+signal_intensity_scale:
+  policy:
+    "0.3": 征求意见稿、行业倡议、无明确罚则
+    "0.6": 正式发布、有明确生效日
+    "0.9": 已实施且伴随专项执法/明确罚则
+  platform_rule:
+    "0.3": 灰度测试、局部调整
+    "0.6": 全量生效、影响部分功能
+    "0.9": 接口下线/权限收回/费率大幅上调
+  sentiment:
+    "0.3": 个别投诉、小范围讨论
+    "0.6": 行业媒体报道、集中投诉
+    "0.9": 主流媒体曝光、监管介入
+  competition:
+    "0.3": 新玩家试水
+    "0.6": 直接竞品明确动作
+    "0.9": 头部大厂战略级投入
+  capital_macro:
+    "0.3": 个别机构收紧
+    "0.6": 行业融资额同比明显下滑
+    "0.9": 系统性收缩、退出通道关闭
+
+# ── 18 条机理 ──
+mechanisms:
+
+  # ══════════ 成本族 ══════════
+  - id: M-COST-01
+    name: 合规成本增加
+    family: cost
+    direction: negative
+    slot: fixed_cost
+    operator: mul
+    k_range: [0.05, 0.30]
+    needs:
+      baseline: [compliance_cost_ratio, regulatory_intensity]
+      exposure: [license_count, inspection_frequency]
+    default_profile: ramp
+    default_ramp_months: 2
+    also_hits:
+      - { slot: cash, operator: add, note: "一次性改造/设备/系统投入，按 k_abs 计" }
+      - { slot: capacity, operator: mul, note: "磨合期产能下降 5-15%" }
+    notes: "适用于新增资质、强制留痕、强制检测、强制培训类要求"
+
+  - id: M-COST-02
+    name: 原料/供应成本上涨
+    family: cost
+    direction: negative
+    slot: unit_cost
+    operator: mul
+    k_range: [0.03, 0.25]
+    needs:
+      baseline: [material_cost_share, supply_concentration]
+      exposure: [single_supplier_dependency, contract_price_lock]
+    default_profile: step
+    notes: "有长期锁价合同时 exposure 取低值；无替代供应商时取高值"
+
+  - id: M-COST-03
+    name: 人力成本上升
+    family: cost
+    direction: negative
+    slot: fixed_cost
+    operator: mul
+    k_range: [0.03, 0.20]
+    needs:
+      baseline: [labor_cost_share, labor_intensity]
+      exposure: [headcount_ratio, outsourcing_ratio]
+    default_profile: step
+    notes: "社保基数调整、最低工资上调、行业用工荒均适用"
+
+  - id: M-COST-04
+    name: 渠道/平台费用上升
+    family: cost
+    direction: negative
+    slot: variable_cost
+    operator: mul
+    k_range: [0.05, 0.40]
+    needs:
+      baseline: [channel_cost_share, platform_concentration]
+      exposure: [channel_dependency, contract_terms]
+    default_profile: step
+    notes: "含佣金上调、推广费涨价、账期拉长（账期部分走 M-CAP-02）"
+
+  - id: M-COST-05
+    name: 技术/工具成本变动
+    family: cost
+    direction: variable
+    slot: fixed_cost
+    operator: mul
+    k_range: [0.02, 0.15]
+    needs:
+      baseline: [tech_cost_share]
+      exposure: [tool_dependency, switching_cost]
+    default_profile: step
+    notes: "方向由信号决定：涨价为负，降价为正（此时走 M-COST-05-P 正向）"
+
+  # ══════════ 收入族 ══════════
+  - id: M-REV-01
+    name: 需求收缩
+    family: revenue
+    direction: negative
+    slot: volume
+    operator: mul
+    k_range: [0.05, 0.35]
+    needs:
+      baseline: [demand_elasticity, income_elasticity]
+      exposure: [discretionary_share, customer_income_segment]
+    default_profile: ramp
+    default_ramp_months: 3
+    notes: "消费降级、行业景气下行、替代品出现"
+
+  - id: M-REV-02
+    name: 价格战/单价下行
+    family: revenue
+    direction: negative
+    slot: price
+    operator: mul
+    k_range: [0.05, 0.30]
+    needs:
+      baseline: [price_elasticity, competition_intensity]
+      exposure: [product_differentiation, switching_cost_for_user]
+    default_profile: ramp
+    default_ramp_months: 2
+    also_hits:
+      - { slot: volume, operator: mul, note: "降价换量时反向，由决策点决定" }
+    notes: "差异化越强、转换成本越高，价格下行压力越小"
+
+  - id: M-REV-03
+    name: 渠道阻断
+    family: revenue
+    direction: negative
+    slot: volume
+    operator: mul
+    k_range: [0.10, 0.60]
+    needs:
+      baseline: [channel_concentration]
+      exposure: [channel_dependency, alternative_channels]
+    default_profile: ramp
+    default_ramp_months: 1
+    notes: "封路、平台下架、接口停用、政策禁售均适用；替代渠道越少越接近上限"
+
+  - id: M-REV-04
+    name: 客户流失率上升
+    family: revenue
+    direction: negative
+    slot: churn
+    operator: mul
+    k_range: [0.10, 0.80]
+    needs:
+      baseline: [baseline_churn, switching_cost]
+      exposure: [satisfaction_sensitivity, contract_lockin]
+    default_profile: step
+    notes: "长合约/高转换成本场景取下限"
+
+  - id: M-REV-05
+    name: 新需求出现（正面）
+    family: revenue
+    direction: positive
+    slot: volume
+    operator: mul
+    k_range: [0.05, 0.40]
+    needs:
+      baseline: [market_growth_rate]
+      exposure: [capability_fit, capacity_headroom]
+    default_profile: ramp
+    default_ramp_months: 2
+    notes: "唯一一条正向机理；产能不足时会同时推高 unit_cost"
+
+  # ══════════ 风险族 ══════════
+  - id: M-RISK-01
+    name: 行政处罚/罚款
+    family: risk
+    direction: negative
+    slot: cash
+    operator: add
+    k_range_abs: [5000, 500000]
+    needs:
+      baseline: [penalty_scale, enforcement_frequency]
+      exposure: [violation_history, compliance_maturity]
+    default_profile: step
+    notes: "量级优先取行业包 penalty_scale（来自公开处罚公示），而非通用区间"
+
+  - id: M-RISK-02
+    name: 停业/资质受限
+    family: risk
+    direction: negative
+    slot: revenue
+    operator: set
+    k_range: [0.5, 1.0]
+    needs:
+      baseline: [license_barrier, enforcement_frequency]
+      exposure: [license_dependency, backup_license]
+    default_profile: step
+    duration_months: [1, 3]
+    notes: "重度冲击：revenue 归零或腰斩，持续期由事件严重度决定"
+
+  - id: M-RISK-03
+    name: 声誉损失与信任折价
+    family: risk
+    direction: negative
+    slot: volume
+    operator: mul
+    k_range: [0.10, 0.45]
+    needs:
+      baseline: [trust_sensitivity, word_of_mouth_weight]
+      exposure: [brand_dependency, response_speed]
+    default_profile: pulse
+    default_tau_months: 2
+    also_hits:
+      - { slot: churn, operator: mul, k_range: [0.15, 0.40], delay_months: 2 }
+      - { slot: unit_cost, operator: mul, k_range: [0.03, 0.10], note: "公关与整改投入" }
+    notes: "响应速度 > 48 小时则取上限；信任敏感行业（医美、教育、食品）取上限"
+
+  - id: M-RISK-04
+    name: 诉讼/赔偿
+    family: risk
+    direction: negative
+    slot: cash
+    operator: add
+    k_range_abs: [10000, 2000000]
+    needs:
+      baseline: [litigation_rate, typical_award]
+      exposure: [contract_risk, ip_dependency]
+    default_profile: step
+    notes: "概率性事件：先按概率判定是否发生，再定量级"
+
+  - id: M-RISK-05
+    name: 供应链中断
+    family: risk
+    direction: negative
+    slot: capacity
+    operator: mul
+    k_range: [0.20, 0.80]
+    needs:
+      baseline: [supply_chain_depth]
+      exposure: [single_source_dependency, inventory_buffer]
+    default_profile: step
+    duration_months: [1, 3]
+    also_hits:
+      - { slot: unit_cost, operator: mul, k_range: [0.05, 0.30], note: "应急采购溢价" }
+
+  # ══════════ 资本族 ══════════
+  - id: M-CAP-01
+    name: 融资难度与估值变化
+    family: capital
+    direction: negative
+    slot: valuation
+    operator: mul
+    k_range: [0.15, 0.50]
+    needs:
+      baseline: [funding_environment, sector_heat]
+      exposure: [runway_months, revenue_quality]
+    default_profile: step
+    also_hits:
+      - { slot: cash, operator: add, note: "融资失败导致 runway 缩短，触发降本" }
+    notes: "runway < 6 个月时取上限"
+
+  - id: M-CAP-02
+    name: 现金占用/账期拉长
+    family: capital
+    direction: negative
+    slot: cash
+    operator: add
+    k_range: [0.3, 2.0]
+    unit: month_of_revenue
+    needs:
+      baseline: [payment_cycle, working_capital_need]
+      exposure: [b2b_share, bargaining_power]
+    default_profile: pulse
+    default_tau_months: 2
+    notes: "量级单位是'月收入的倍数'，不是绝对金额——这样跨行业可比"
+
+  - id: M-CAP-03
+    name: 资产减值/沉没成本
+    family: capital
+    direction: negative
+    slot: cash
+    operator: add
+    k_range: [0.1, 1.0]
+    unit: share_of_invested_assets
+    needs:
+      baseline: [asset_intensity]
+      exposure: [asset_specificity, salvage_value]
+    default_profile: step
+    notes: "设备/装修/定制系统的专用性越强，减值比例越高"
+
+# ── 二阶效应通用规则（所有机理共享） ──
+second_order_rules:
+  - trigger: "delta >= 0.20 且持续 >= 2 个月"
+    effect: "触发管理动作判定：降本 / 提价 / 收缩业务线（由经营 Agent 决策）"
+  - trigger: "同一槽位在 3 个月内被 2 条以上机理命中"
+    effect: "叠加而非取最大值，并标记'复合冲击'"
+  - trigger: "delta <= 0.03"
+    effect: "记入日志但不结算（视为噪声）"
+
+# ── 已知缺口（2026-11-16 咖啡店演算后记录，见 04-纸上演算-咖啡店.md）──
+known_gaps:
+  - id: GAP-01
+    severity: critical
+    status: resolved
+    resolved_by: "_actions.yaml v0.1.0（2026-11-16），18 个动作，已验证可改变结局（期末现金 +13.5 万）"
+    title: 缺动作库（只有冲击，没有经营动作）
+    detail: "本库描述的全是外部打击；提价/开外卖/裁员/换供应商/推新品等主动动作无对应条目，导致模拟只能被动衰减，无法比较策略"
+    fix: "新增 _actions.yaml，与机理库对称：动作 → 槽位变化 + 代价 + 成功率 + 生效延迟"
+  - id: GAP-02
+    severity: critical
+    title: 增长未建模，却主导结论
+    detail: "咖啡店演算中，仅改变月增长率（-1% ~ +1.5%），期末现金从 -6.6 万变到 +20.4 万；该参数不在任何基线的计算路径上"
+    fix: "行业包新增 growth_assumption 区间，引擎按蒙特卡洛扫描，输出分布而非单点"
+  - id: GAP-03
+    severity: high
+    title: 单路径而非分布
+    detail: "事件缺 probability 字段，一条确定性轨迹不能支撑'可行性'判断"
+    fix: "事件加 probability，跑 N 次输出存活率 / 中位数 / 5% 分位"
+  - id: GAP-04
+    severity: medium
+    title: 评分口径不可跨行业
+    detail: "LTV/CAC 对单店生意无意义，需 scoring_slot_map 做语义映射"
+    fix: "与 slot_map 同构，行业包提供评分口径映射"
+
+  # ── 2026-11-16 跨行业校验（咖啡 / 健身 / 中餐）新暴露，详见 06-动作库跨行业校验.md ──
+  - id: GAP-05
+    severity: critical
+    status: resolved
+    resolved_by: "_actions.yaml v0.2.0：字段更名 one_time_cash_out + 符号断言"
+    title: 动作一次性成本未声明现金流方向
+    detail: "v0.1 只写 cost.one_time，实现时把'重谈租约的中介费'当成收入加进现金，一次凭空产生 2.5 万。符号错误不会报错，只会让所有重动作看起来都很划算"
+    fix: "更名为 one_time_cash_out，语义固定为流出；引擎对一次性项做减法并在报告单列"
+  - id: GAP-06
+    severity: high
+    status: resolved
+    resolved_by: "_actions.yaml v0.2.0：A-COST-02 引入 share_of_fixed"
+    title: 降某项固定成本时未乘该项占比
+    detail: "A-COST-02 把'降租 12%'打在 fixed_cost 全量上。实际房租只占固定成本 34%~45%，实测高估 2.2~2.9 倍"
+    fix: "所有单项降本动作必须带 share_of_fixed；缺省不得为 1"
+  - id: GAP-07
+    severity: high
+    status: resolved
+    resolved_by: "_actions.yaml v0.2.0：A-PRICE-01/02 引入 elasticity_guard"
+    title: 价格动作被当作无条件有效
+    detail: "自助健身房 price_elasticity=1.10，提价 8% 掉量 8.8%，收入净减，A-PRICE-01 变成负贡献（-3,450）"
+    fix: "e>=1 时拒绝价格类动作，改指向 A-GROW-03（提客单）"
+  - id: GAP-08
+    severity: critical
+    status: resolved
+    resolved_by: "_actions.yaml v0.2.0：A-COST-01 引入 key_person_dependency"
+    title: 人力被当作同质资源
+    detail: "裁员在中餐店等于动厨师长：建模时净现金 -63,161，不建模时误判为 +54,535，漏判 11.8 万的符号差异"
+    fix: "A-COST-01 增加 volume 惩罚项 = cut_ratio × key_person_dependency，持续 6 个月 + 恢复 4 个月"
+  - id: GAP-09
+    severity: critical
+    status: resolved
+    resolved_by: "_actions.yaml v0.2.0：A-CAP-01 改为 volume_gated"
+    title: 加产能被假设为自动带来需求
+    detail: "v0.1 的 effects 直接写 volume×(1+g×0.5)，等于'产能即需求'。三行业月均利用率 64%~69%，扩产全部是大额负贡献（-15.8 万~-26.5 万）"
+    fix: "新增槽位 volume_gated，仅当利用率≥85% 时才转化；面积天花板 capacity_ceiling 同步进入结算"
+  - id: GAP-10
+    severity: critical
+    status: resolved
+    resolved_by: "_actions.yaml v0.2.0：新增 A-FIN-03 预售/储值/年卡"
+    title: 预收款与履约负债完全缺失
+    detail: "自助健身房账面现金 20,316，扣掉 101,031 预收负债后净现金 -80,714。没有这条动作，沙盒会认为一家已资不抵债的店还活着；也没有任何动作能表示'卖未来换今天'"
+    fix: "新增 A-FIN-03，同时增加 liability 账户；引擎输出'账面现金'与'净现金'两个口径"
+  - id: GAP-11
+    severity: high
+    status: resolved
+    resolved_by: "_actions.yaml v0.2.0：A-COST-03 引入 quality_visibility"
+    title: 品质降级的传导只写在 risk 注释里，没进公式
+    detail: "同一个'换便宜供应商'动作：中餐店 -13,465（客人吃得出来），咖啡店 +26,283（喝不出来）。v0.1 把这条写在 risk 里当备注，导致符号完全取决于实现者心情"
+    fix: "增加 quality_visibility 字段与 volume 惩罚项 |quality_delta| × quality_visibility × 2"
+  - id: GAP-12
+    severity: medium
+    title: churn 语义只对月付成立
+    detail: "年卡（健身房）的续费周期是 12 个月，'月度流失率'无法表达'到期那一批人不再续'。当前用 volume 下降近似，损失了'断崖式'特征"
+    fix: "行业包增加 renewal_cycle_months 后，churn 需按周期重定义"
+  - id: GAP-13
+    severity: medium
+    title: 峰值利用率未建模
+    detail: "月均聚合看不见排队。健身房晚 7-9 点满员、中餐午市翻台到顶，这些真实约束在月度模型里消失，导致 A-CAP-01 的触发条件（利用率>85%）几乎不可满足"
+    fix: "增加 peak_utilization 字段，产能约束按峰值而非月均判定"
+
+# ── 行业包必须提供的基线字段（缺字段 = 动作降级为粗算，必须显式告警）──
+baseline_required_fields:
+  core: [rent_cost_share, labor_cost_share, material_cost_share, other_cost_share,
+         price_elasticity, competition_intensity, regulatory_intensity,
+         trust_sensitivity, channel_concentration, penalty_scale,
+         enforcement_frequency, baseline_churn]
+  v0_2_added:
+    capacity_ceiling:      "扩产动作的物理天花板；缺失则扩产会被高估"
+    key_person_dependency: "裁员/关键人流失的品质传导；缺失则降本会被高估"
+    quality_visibility:    "降规格是否被客户察觉；缺失则换供应商的符号不确定"
+    prepaid_ratio:         "预收/储值占比；缺失则现金与收入无法分离"
+    labor_rigidity:        "人力可压缩程度；缺失则裁员成本会被低估"

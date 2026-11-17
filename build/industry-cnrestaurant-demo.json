@@ -1,0 +1,333 @@
+{
+  "meta": {
+    "pack_id": "industry-cnrestaurant-cn-community",
+    "name": "社区中餐店（单店）",
+    "version": "0.1.0",
+    "status": "draft",
+    "generated_by": "LLM 从公开资料归纳，未经人工抽检；用于动作库跨行业校验",
+    "confidence": 0.45,
+    "sources": [
+      {
+        "topic": "成本结构",
+        "ref": "餐饮行业成本拆分（食材 38~42% / 人力 18~22% / 房租 12~18%）",
+        "verified": false
+      },
+      {
+        "topic": "平台佣金",
+        "ref": "主流外卖平台餐饮商家技术服务费区间",
+        "verified": false
+      },
+      {
+        "topic": "处罚量级",
+        "ref": "《食品安全法》罚则 + 各地市监局餐饮处罚公示",
+        "verified": false
+      }
+    ],
+    "note": "重点仍是结构。抽检只需核对 3 项：食材占比、外卖占比、厨师人力成本"
+  },
+  "archetype": "single_site_service",
+  "capability_overrides": {
+    "headcount": 6,
+    "channel_count": 2,
+    "cost_negotiability": 0.5,
+    "supplier_alternatives": 0.8
+  },
+  "baseline": {
+    "material_cost_share": 0.4,
+    "labor_cost_share": 0.2,
+    "rent_cost_share": 0.14,
+    "platform_cost_share": 0.075,
+    "other_cost_share": 0.045,
+    "equipment_cost_share": 0.02,
+    "price_elasticity": 0.55,
+    "competition_intensity": 0.85,
+    "regulatory_intensity": 0.8,
+    "trust_sensitivity": 0.85,
+    "channel_concentration": 0.55,
+    "enforcement_frequency": 0.75,
+    "penalty_scale": [
+      5000,
+      200000
+    ],
+    "baseline_churn": 0.08,
+    "growth_assumption": [
+      -0.005,
+      0.015
+    ],
+    "growth_source": "先验估计：堂食受商圈客流周期影响，外卖占比上升带来小幅正增长；需用同类店回填",
+    "demand_volatility": 0.06,
+    "key_person_dependency": 0.75,
+    "labor_rigidity": 0.8,
+    "quality_visibility": 0.85,
+    "capacity_ceiling": 1.08,
+    "prepaid_ratio": 0.1,
+    "renewal_cycle_months": 1,
+    "delivery_dependency": 0.35
+  },
+  "operations": {
+    "price": 58,
+    "volume": 90,
+    "days": 30,
+    "fixed_cost": 64600,
+    "unit_cost": 23.2,
+    "var_rate": 0.075,
+    "capacity": 130,
+    "cash": 150000,
+    "liability": 30000,
+    "assets": {
+      "transfer": 80000,
+      "fitout": 320000,
+      "equipment": 200000,
+      "deposit": 40000
+    }
+  },
+  "prepaid": {
+    "enabled": true,
+    "amort_months": 6,
+    "inflow_per_month": 6000,
+    "refund_on_exit": 0.5
+  },
+  "slot_map": {
+    "fixed_cost": [
+      "rent",
+      "labor",
+      "energy",
+      "misc"
+    ],
+    "unit_cost": [
+      "food_cost_per_order"
+    ],
+    "variable_cost": [
+      "platform_commission",
+      "payment_fee"
+    ],
+    "volume": [
+      "daily_orders"
+    ],
+    "price": [
+      "avg_ticket"
+    ],
+    "churn": [
+      "repeat_rate_inverse"
+    ],
+    "capacity": [
+      "daily_capacity_tables"
+    ],
+    "revenue": [
+      "monthly_revenue"
+    ],
+    "cash": [
+      "cash_balance"
+    ],
+    "valuation": [
+      "store_valuation"
+    ]
+  },
+  "exposure": [
+    {
+      "key": "channel_dependency",
+      "question": "堂食收入占你总收入多少？",
+      "options": {
+        "低于40%（以外卖为主）": 0.4,
+        "40%-70%": 0.7,
+        "70%以上": 0.9
+      }
+    },
+    {
+      "key": "key_person_risk",
+      "question": "厨师长如果走了，你能在多长时间内恢复原有出品？",
+      "options": {
+        "有副厨随时顶上": 0.3,
+        "需要1-2个月招人": 0.6,
+        "只有他能做": 0.95
+      }
+    },
+    {
+      "key": "quality_visibility",
+      "question": "如果你换成更便宜的食材，老客能吃得出来吗？",
+      "options": {
+        "基本吃不出": 0.3,
+        "敏感客能吃出": 0.6,
+        "大多数能吃出": 0.9
+      }
+    },
+    {
+      "key": "platform_dependency",
+      "question": "外卖占总收入多少？",
+      "options": {
+        "低于20%": 0.3,
+        "20%-45%": 0.6,
+        "45%以上": 0.9
+      }
+    },
+    {
+      "key": "capacity_headroom",
+      "question": "高峰时段（午市/晚市）翻台还有空间吗？",
+      "options": {
+        "还有空位": 0.2,
+        "刚好坐满": 0.5,
+        "外面排队": 0.9
+      }
+    },
+    {
+      "key": "license_dependency",
+      "question": "你有几家店可以互相支援？",
+      "options": {
+        "3 家以上": 0.3,
+        "2 家": 0.6,
+        "单店": 0.95
+      }
+    },
+    {
+      "key": "runway_months",
+      "question": "如果明天营业额归零，现金能撑几个月？",
+      "options": {
+        "6个月以上": 0.3,
+        "3-6个月": 0.6,
+        "不到3个月": 0.9
+      }
+    }
+  ],
+  "demo_events": [
+    {
+      "id": "M-COST-02",
+      "name": "猪肉/蔬菜批发价上涨",
+      "start": 4,
+      "dur": 8,
+      "slot": "unit_cost",
+      "delta": 0.07,
+      "profile": "ramp",
+      "ramp": 2,
+      "recover": 3
+    },
+    {
+      "id": "M-COST-04",
+      "name": "外卖平台佣金上调 2 个点",
+      "start": 6,
+      "dur": null,
+      "slot": "var_rate",
+      "delta": 0.02,
+      "profile": "step"
+    },
+    {
+      "id": "M-REV-03",
+      "name": "门前道路改造封半幅",
+      "start": 8,
+      "dur": 4,
+      "slot": "volume",
+      "delta": -0.18,
+      "profile": "step",
+      "recover": 3
+    },
+    {
+      "id": "M-RISK-01",
+      "name": "食安抽检不合格（被罚+通报）",
+      "start": 10,
+      "dur": 3,
+      "slot": "volume",
+      "delta": -0.12,
+      "profile": "ramp",
+      "ramp": 1,
+      "recover": 4
+    },
+    {
+      "id": "M-RISK-01-B",
+      "name": "罚款",
+      "start": 10,
+      "dur": 1,
+      "slot": "cash_once",
+      "delta": -20000,
+      "profile": "step"
+    },
+    {
+      "id": "M-REV-02",
+      "name": "同街连锁快餐打价格战",
+      "start": 12,
+      "dur": 12,
+      "slot": "price",
+      "delta": -0.06,
+      "profile": "ramp",
+      "ramp": 2,
+      "recover": 3
+    },
+    {
+      "id": "M-COST-03",
+      "name": "厨师长要求涨薪 20%（否则走）",
+      "start": 14,
+      "dur": null,
+      "slot": "fixed_cost",
+      "delta": 0.07,
+      "profile": "step"
+    },
+    {
+      "id": "M-REV-01",
+      "name": "周边消费降级，客单下滑",
+      "start": 16,
+      "dur": 8,
+      "slot": "volume",
+      "delta": -0.07,
+      "profile": "ramp",
+      "ramp": 2
+    },
+    {
+      "id": "M-RISK-02",
+      "name": "消防整改停业 5 天",
+      "start": 19,
+      "dur": 1,
+      "slot": "volume",
+      "delta": -0.17,
+      "profile": "step"
+    }
+  ],
+  "demo_actions": [
+    {
+      "at": 6,
+      "id": "A-PRICE-01",
+      "name": "菜单调价 +6%",
+      "params": {
+        "price_delta": 0.06
+      }
+    },
+    {
+      "at": 6,
+      "id": "A-GROW-02",
+      "name": "上线第二个外卖平台",
+      "params": {
+        "volume_gain": 0.12,
+        "channel_fee": 0.2
+      }
+    },
+    {
+      "at": 11,
+      "id": "A-COST-03",
+      "name": "换食材供应商（降价 8%）",
+      "params": {
+        "unit_cost_delta": -0.08,
+        "quality_delta": -0.06
+      }
+    },
+    {
+      "at": 15,
+      "id": "A-COST-01",
+      "name": "裁 1 名服务员（缩编 15%）",
+      "params": {
+        "cut_ratio": 0.15
+      }
+    },
+    {
+      "at": 18,
+      "id": "A-GROW-04",
+      "name": "会员储值/集章复购",
+      "params": {
+        "churn_reduction": 0.18,
+        "margin_give_up": 0.04
+      }
+    }
+  ],
+  "generation_queries": [
+    "社区中餐店 成本结构 食材 人力 房租 占比 before:2026-11-16",
+    "外卖平台 餐饮 佣金 技术服务费 比例 before:2026-11-16",
+    "食品安全法 餐饮 处罚 标准 罚款 金额 site:gov.cn before:2026-11-16",
+    "中餐 厨师 人力成本 占比 流失率 before:2026-11-16"
+  ]
+}

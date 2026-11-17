@@ -1,0 +1,492 @@
+{
+  "meta": {
+    "pack_id": "applicability",
+    "name": "动作适用性库",
+    "version": "0.1.0",
+    "updated_at": "2026-11-16",
+    "resolves": [
+      "GAP-CAL-04",
+      "GAP-APP-01"
+    ],
+    "principle": "先问存在性，再问概率。不存在的动作不该有 p，也不该出现在菜单里。"
+  },
+  "tiers": {
+    "core": {
+      "desc": "正常可用，是这个形态的常规手段",
+      "ui": "菜单首选"
+    },
+    "weak": {
+      "desc": "存在但杠杆被结构性削弱（人太少、场地不可分、客户不可识别）",
+      "ui": "菜单可选，须标注削弱原因与预期贡献上限"
+    },
+    "impossible": {
+      "desc": "该形态下此动作不存在，不是难，是没有",
+      "ui": "不出现在菜单；用户强行选择时引擎拒绝并给出原因（不掷骰、不部分生效）"
+    }
+  },
+  "capability_schema": {
+    "scale": {
+      "type": "enum",
+      "values": [
+        "unit",
+        "digital",
+        "multi",
+        "chain",
+        "platform"
+      ],
+      "desc": "经营单元形态"
+    },
+    "headcount": {
+      "type": "int",
+      "desc": "可支配人力（含经营者本人）"
+    },
+    "pricing_authority": {
+      "type": "float",
+      "desc": "0~1，能否自主改价（加盟/总部管控则低）"
+    },
+    "staff_authority": {
+      "type": "float",
+      "desc": "0~1，能否自主决定编制"
+    },
+    "capital_access": {
+      "type": "enum",
+      "values": [
+        "none",
+        "debt_only",
+        "equity"
+      ],
+      "desc": "能进入哪一级资本市场"
+    },
+    "channel_count": {
+      "type": "int",
+      "desc": "现有独立销售渠道数（到店/外卖/私域/分销各算一个）"
+    },
+    "product_breadth": {
+      "type": "float",
+      "desc": "0~1，可新增产品/服务项的空间"
+    },
+    "business_lines": {
+      "type": "int",
+      "desc": "可独立核算的业务线数量（单店通常 =1）"
+    },
+    "prepaid_license": {
+      "type": "enum",
+      "values": [
+        "none",
+        "filed",
+        "registered"
+      ],
+      "desc": "预付卡/储值资质状态"
+    },
+    "space_flexibility": {
+      "type": "float",
+      "desc": "0~1，场地/产能可扩可缩的程度（单店≈0.15）"
+    },
+    "cost_negotiability": {
+      "type": "float",
+      "desc": "0~1，固定成本可谈判空间（长租约+大房东则高）"
+    },
+    "supplier_alternatives": {
+      "type": "float",
+      "desc": "0~1，可替换供应商的充裕度"
+    },
+    "crm_maturity": {
+      "type": "float",
+      "desc": "0~1，能否识别并触达单个客户（会员系统）"
+    }
+  },
+  "archetypes": {
+    "single_site_service": {
+      "label": "单店到店服务（咖啡/餐饮/健身/理发/洗衣/教培单点）",
+      "capabilities": {
+        "scale": "unit",
+        "headcount": 4,
+        "pricing_authority": 0.9,
+        "staff_authority": 0.85,
+        "capital_access": "debt_only",
+        "channel_count": 1,
+        "product_breadth": 0.5,
+        "business_lines": 1,
+        "prepaid_license": "filed",
+        "space_flexibility": 0.15,
+        "cost_negotiability": 0.6,
+        "supplier_alternatives": 0.6,
+        "crm_maturity": 0.5
+      },
+      "notes": "关键结构性事实：只有一条业务线（收缩=退出）、场地不可扩（扩产=开新店，不在本模型）、不进股权市场"
+    },
+    "digital_product": {
+      "label": "数字产品/SaaS/内容（边际成本≈0）",
+      "capabilities": {
+        "scale": "digital",
+        "headcount": 6,
+        "pricing_authority": 0.95,
+        "staff_authority": 0.9,
+        "capital_access": "equity",
+        "channel_count": 2,
+        "product_breadth": 0.9,
+        "business_lines": 2,
+        "prepaid_license": "registered",
+        "space_flexibility": 1.0,
+        "cost_negotiability": 0.2,
+        "supplier_alternatives": 0.3,
+        "crm_maturity": 0.9
+      },
+      "notes": "产能几乎无上限（云），但固定成本可谈空间小（云厂商不议价）；预付=年付订阅合法常态"
+    },
+    "physical_goods_brand": {
+      "label": "实物品牌/电商（有供应链与库存）",
+      "capabilities": {
+        "scale": "multi",
+        "headcount": 15,
+        "pricing_authority": 0.8,
+        "staff_authority": 0.8,
+        "capital_access": "equity",
+        "channel_count": 3,
+        "product_breadth": 0.7,
+        "business_lines": 2,
+        "prepaid_license": "registered",
+        "space_flexibility": 0.8,
+        "cost_negotiability": 0.5,
+        "supplier_alternatives": 0.7,
+        "crm_maturity": 0.7
+      },
+      "notes": "扩产是真实选项（代工厂产能），但库存会吃掉现金——这是它和数字产品的根本差别"
+    },
+    "multi_site_chain": {
+      "label": "多店连锁（3+ 门店，有总部）",
+      "capabilities": {
+        "scale": "chain",
+        "headcount": 40,
+        "pricing_authority": 0.4,
+        "staff_authority": 0.8,
+        "capital_access": "equity",
+        "channel_count": 2,
+        "product_breadth": 0.6,
+        "business_lines": 2,
+        "prepaid_license": "registered",
+        "space_flexibility": 0.7,
+        "cost_negotiability": 0.8,
+        "supplier_alternatives": 0.8,
+        "crm_maturity": 0.8
+      },
+      "notes": "定价权被总部收走（单店改价不可行）；但换供应商/谈租约的筹码远强于单店"
+    },
+    "marketplace": {
+      "label": "平台/双边市场（抽佣、网络效应）",
+      "capabilities": {
+        "scale": "platform",
+        "headcount": 20,
+        "pricing_authority": 0.7,
+        "staff_authority": 0.8,
+        "capital_access": "equity",
+        "channel_count": 2,
+        "product_breadth": 0.8,
+        "business_lines": 2,
+        "prepaid_license": "registered",
+        "space_flexibility": 1.0,
+        "cost_negotiability": 0.3,
+        "supplier_alternatives": 0.2,
+        "crm_maturity": 0.85
+      },
+      "notes": "双边定价是核心杠杆，但补贴战一旦开打，定价权并不完全在自己手里"
+    }
+  },
+  "action_gates": [
+    {
+      "id": "A-PRICE-01",
+      "name": "提价",
+      "gates": [
+        {
+          "when": {
+            "dim": "pricing_authority",
+            "gte": 0.6
+          },
+          "on_fail": "weak",
+          "reason": "定价权被总部/加盟体系管控，只能通过套餐结构间接提价，幅度打对折"
+        },
+        {
+          "when": {
+            "dim": "pricing_authority",
+            "gte": 0.3
+          },
+          "on_fail": "impossible",
+          "reason": "完全没有定价权"
+        }
+      ]
+    },
+    {
+      "id": "A-PRICE-02",
+      "name": "促销/降价换量",
+      "gates": [
+        {
+          "when": {
+            "dim": "pricing_authority",
+            "gte": 0.4
+          },
+          "on_fail": "impossible",
+          "reason": "没有定价权，无法单方面降价"
+        }
+      ]
+    },
+    {
+      "id": "A-COST-01",
+      "name": "裁员/缩编",
+      "gates": [
+        {
+          "when": {
+            "dim": "headcount",
+            "gte": 4
+          },
+          "on_fail": "weak",
+          "reason": "人力规模过小，'裁 15%' 在算术上等于不补岗，不是裁员；对交付能力的影响反而更大"
+        },
+        {
+          "when": {
+            "dim": "headcount",
+            "gte": 2
+          },
+          "on_fail": "impossible",
+          "reason": "已无人力可减，再减等于停业"
+        },
+        {
+          "when": {
+            "dim": "staff_authority",
+            "gte": 0.5
+          },
+          "on_fail": "impossible",
+          "reason": "编制由总部/加盟方决定，门店无权裁撤"
+        }
+      ]
+    },
+    {
+      "id": "A-COST-02",
+      "name": "重谈固定成本",
+      "gates": [
+        {
+          "when": {
+            "dim": "cost_negotiability",
+            "gte": 0.35
+          },
+          "on_fail": "weak",
+          "reason": "租约筹码弱（面积小/无替代选址），对方没有让步动机，成功率与幅度都要下调"
+        }
+      ]
+    },
+    {
+      "id": "A-COST-03",
+      "name": "换供应商/降规格",
+      "gates": [
+        {
+          "when": {
+            "dim": "supplier_alternatives",
+            "gte": 0.3
+          },
+          "on_fail": "weak",
+          "reason": "可替换供应商很少，替换成本高于收益"
+        }
+      ]
+    },
+    {
+      "id": "A-COST-04",
+      "name": "削减非核心支出",
+      "gates": [
+
+      ]
+    },
+    {
+      "id": "A-GROW-01",
+      "name": "加大获客投入",
+      "gates": [
+
+      ]
+    },
+    {
+      "id": "A-GROW-02",
+      "name": "开新渠道",
+      "gates": [
+        {
+          "when": {
+            "dim": "channel_count",
+            "lte": 3
+          },
+          "on_fail": "weak",
+          "reason": "渠道已铺满，新增渠道是对现有渠道的内部蚕食而非增量"
+        }
+      ]
+    },
+    {
+      "id": "A-GROW-03",
+      "name": "推新品/新 SKU",
+      "gates": [
+        {
+          "when": {
+            "dim": "product_breadth",
+            "gte": 0.35
+          },
+          "on_fail": "weak",
+          "reason": "产品空间狭窄，'新品'只能是小改款，消费者感知弱"
+        },
+        {
+          "when": {
+            "dim": "product_breadth",
+            "gte": 0.15
+          },
+          "on_fail": "impossible",
+          "reason": "产品形态固定，没有新增项的空间"
+        }
+      ]
+    },
+    {
+      "id": "A-GROW-04",
+      "name": "会员/复购机制",
+      "gates": [
+        {
+          "when": {
+            "dim": "crm_maturity",
+            "gte": 0.3
+          },
+          "on_fail": "weak",
+          "reason": "无法识别单个客户（无收银/会员系统），只能做泛促销，复购提升有限"
+        }
+      ]
+    },
+    {
+      "id": "A-CAP-01",
+      "name": "扩产",
+      "gates": [
+        {
+          "when": {
+            "dim": "space_flexibility",
+            "gte": 0.5
+          },
+          "on_fail": "weak",
+          "reason": "场地刚性：能加的是人手，不是座位。实际产能天花板只多 20%（capacity_ceiling），且人效递减"
+        }
+      ],
+      "note": "这条原本判 impossible，被一次真实操作推翻：用户要求\"加员工\"，\n而这在一家 3 人的店里完全合理——加一个咖啡师能提高出杯速度，\n只是座位和吧台位置决定了天花板（capacity_ceiling=1.20）。\n引擎其实已经用 min(capacity, capacity×ceiling) 处理了上限，\n适用层再判\"不存在\"就是双重保险变成了剥夺选项。\n正确分类是 weak：能做，但收益被封顶、成本照付。\n"
+    },
+    {
+      "id": "A-CAP-02",
+      "name": "收缩产能",
+      "gates": [
+        {
+          "when": {
+            "dim": "space_flexibility",
+            "gte": 0.3
+          },
+          "on_fail": "weak",
+          "reason": "面积不可分，只能整租整退；'收缩'实际是退租，属退出动作"
+        }
+      ]
+    },
+    {
+      "id": "A-FIN-01",
+      "name": "融资",
+      "gates": [
+        {
+          "when": {
+            "dim": "capital_access",
+            "in": [
+              "equity"
+            ]
+          },
+          "on_fail": "impossible",
+          "reason": "股权融资市场不覆盖单店/本地生活项目；写 p=0.35 会让用户以为还有三成机会"
+        }
+      ]
+    },
+    {
+      "id": "A-FIN-02",
+      "name": "借贷/账期谈判",
+      "gates": [
+        {
+          "when": {
+            "dim": "capital_access",
+            "in": [
+              "debt_only",
+              "equity"
+            ]
+          },
+          "on_fail": "impossible",
+          "reason": "无任何可抵押/可授信主体（无对公流水、无抵押物）"
+        }
+      ]
+    },
+    {
+      "id": "A-FIN-03",
+      "name": "预售/储值/年卡",
+      "gates": [
+        {
+          "when": {
+            "dim": "prepaid_license",
+            "in": [
+              "filed",
+              "registered"
+            ]
+          },
+          "on_fail": "impossible",
+          "reason": "未取得预付卡备案/资质，预售属违规；卖得越多，合规与挤兑风险越大"
+        }
+      ]
+    },
+    {
+      "id": "A-RISK-01",
+      "name": "合规加固",
+      "gates": [
+
+      ]
+    },
+    {
+      "id": "A-RISK-02",
+      "name": "危机公关",
+      "gates": [
+
+      ]
+    },
+    {
+      "id": "A-STR-01",
+      "name": "收缩业务线",
+      "gates": [
+        {
+          "when": {
+            "dim": "business_lines",
+            "gte": 2
+          },
+          "on_fail": "impossible",
+          "reason": "只有一条业务线，'收缩'等于退出——那是 A-STR-02，不是降本"
+        }
+      ]
+    },
+    {
+      "id": "A-STR-02",
+      "name": "退出/转让",
+      "gates": [
+
+      ]
+    }
+  ],
+  "governance": {
+    "override_limit": 4,
+    "override_rule": "行业包只允许 ≤4 个 capability_overrides。超过 4 个说明该原型不成立，应新建原型而不是打补丁。",
+    "menu_policy": "impossible 动作不进菜单；用户强行选择时引擎拒绝并返回 reason，不掷骰、不部分生效、不按失败结算",
+    "weak_policy": "weak 动作可执行，但报告必须标注削弱原因；其期望贡献按各动作 params 的保守档取值",
+    "audit_rule": "任何原型改动都必须重跑 gate_demo.py，菜单变动会被打印成 diff"
+  },
+  "known_gaps": [
+    {
+      "id": "GAP-APP-01",
+      "severity": "medium",
+      "title": "原型的能力向量是典型值，不是分布",
+      "detail": "同为单店，3 人咖啡店和 12 人餐馆的 staff_authority/headcount 差异很大；当前靠 override 修，覆盖不了长尾",
+      "fix": "把 headcount 这类强变异维度改为从 operations.fixed_cost 与 labor_cost_share 反推，减少人工 override"
+    },
+    {
+      "id": "GAP-APP-02",
+      "severity": "low",
+      "title": "impossible 是二值的，但现实中存在\"极难\"",
+      "detail": "单店拿到天使投资不是零概率，是千分之一；二值判定把极小概率直接砍成零",
+      "fix": "保留一个 rare 档（p<0.02 且幅度受限），但这会重新引入用户误解风险，暂不做"
+    }
+  ]
+}

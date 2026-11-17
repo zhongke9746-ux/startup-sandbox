@@ -1,0 +1,322 @@
+{
+  "meta": {
+    "pack_id": "industry-gym-cn-community",
+    "name": "自助健身房（社区单店）",
+    "version": "0.1.0",
+    "status": "draft",
+    "generated_by": "LLM 从公开资料归纳，未经人工抽检；用于动作库跨行业校验",
+    "confidence": 0.45,
+    "sources": [
+      {
+        "topic": "成本结构",
+        "ref": "健身行业单店模型拆解（房租/器械折旧/人力占比）",
+        "verified": false
+      },
+      {
+        "topic": "预付卡监管",
+        "ref": "《单用途商业预付卡管理办法》+ 地方体育健身行业预付费监管细则",
+        "verified": false
+      },
+      {
+        "topic": "续费率",
+        "ref": "建议改用门店 POS 续费数据回填",
+        "verified": false
+      }
+    ],
+    "note": "重点是结构，不是精度。抽检只需核对 3 项：房租占收入比、年卡/月卡比例、器械折旧年限"
+  },
+  "archetype": "single_site_service",
+  "capability_overrides": {
+    "headcount": 2,
+    "space_flexibility": 0.2,
+    "crm_maturity": 0.95,
+    "cost_negotiability": 0.55
+  },
+  "baseline": {
+    "rent_cost_share": 0.33,
+    "labor_cost_share": 0.1,
+    "material_cost_share": 0.03,
+    "platform_cost_share": 0.03,
+    "equipment_cost_share": 0.14,
+    "other_cost_share": 0.04,
+    "price_elasticity": 1.1,
+    "competition_intensity": 0.8,
+    "regulatory_intensity": 0.55,
+    "trust_sensitivity": 0.75,
+    "channel_concentration": 0.85,
+    "enforcement_frequency": 0.5,
+    "penalty_scale": [
+      5000,
+      50000
+    ],
+    "baseline_churn": 0.075,
+    "growth_assumption": [
+      0.0,
+      0.02
+    ],
+    "growth_source": "先验估计：周边 3 公里人口稳定，增长主要来自开业爬坡后口碑；需用同品牌门店回填",
+    "demand_volatility": 0.04,
+    "prepaid_ratio": 0.72,
+    "renewal_cycle_months": 12,
+    "renewal_rate_12m": 0.25,
+    "capacity_ceiling": 1.15,
+    "key_person_dependency": 0.2,
+    "labor_rigidity": 0.1,
+    "quality_visibility": 0.45
+  },
+  "operations": {
+    "price": 118,
+    "volume": 420,
+    "days": 1,
+    "fixed_cost": 36400,
+    "unit_cost": 3.0,
+    "var_rate": 0.03,
+    "capacity": 550,
+    "cash": 200000,
+    "liability": 220000,
+    "assets": {
+      "transfer": 0,
+      "fitout": 200000,
+      "equipment": 350000,
+      "deposit": 55000
+    }
+  },
+  "prepaid": {
+    "enabled": true,
+    "amort_months": 8,
+    "inflow_per_month": 12000,
+    "refund_on_exit": 0.6
+  },
+  "slot_map": {
+    "fixed_cost": [
+      "rent",
+      "labor",
+      "energy",
+      "maintenance",
+      "depreciation"
+    ],
+    "unit_cost": [
+      "consumables_per_member"
+    ],
+    "variable_cost": [
+      "payment_fee",
+      "saas_fee"
+    ],
+    "volume": [
+      "active_members"
+    ],
+    "price": [
+      "arpu_monthly"
+    ],
+    "churn": [
+      "renewal_rate_inverse"
+    ],
+    "capacity": [
+      "max_members"
+    ],
+    "revenue": [
+      "monthly_revenue"
+    ],
+    "cash": [
+      "cash_balance"
+    ],
+    "valuation": [
+      "store_valuation"
+    ]
+  },
+  "exposure": [
+    {
+      "key": "channel_dependency",
+      "question": "会员里来自周边 3 公里（社区/写字楼）的比例？",
+      "options": {
+        "低于50%": 0.4,
+        "50%-80%": 0.7,
+        "80%以上": 0.9
+      }
+    },
+    {
+      "key": "prepaid_dependency",
+      "question": "年卡/季卡收入占总收入多少？",
+      "options": {
+        "低于30%（以月卡为主）": 0.3,
+        "30%-70%": 0.6,
+        "70%以上": 0.95
+      }
+    },
+    {
+      "key": "renewal_health",
+      "question": "上一批年卡到期，续费的大概几成？",
+      "options": {
+        "四成以上": 0.3,
+        "两到四成": 0.6,
+        "不到两成": 0.9
+      }
+    },
+    {
+      "key": "capacity_headroom",
+      "question": "高峰期（晚 7-9 点）器械排队吗？",
+      "options": {
+        "很空": 0.2,
+        "偶尔排队": 0.5,
+        "经常排队": 0.9
+      }
+    },
+    {
+      "key": "equipment_age",
+      "question": "主力器械用了几年？",
+      "options": {
+        "2 年以内": 0.2,
+        "2-4 年": 0.5,
+        "5 年以上": 0.9
+      }
+    },
+    {
+      "key": "license_dependency",
+      "question": "你有几家店可以互相导流？",
+      "options": {
+        "3 家以上": 0.3,
+        "2 家": 0.6,
+        "单店": 0.95
+      }
+    },
+    {
+      "key": "runway_months",
+      "question": "如果明天不再卖新卡，现金能撑几个月？",
+      "options": {
+        "6个月以上": 0.3,
+        "3-6个月": 0.6,
+        "不到3个月": 0.95
+      }
+    }
+  ],
+  "demo_events": [
+    {
+      "id": "M-REV-01",
+      "name": "周边互联网公司裁员，健身预算缩减",
+      "start": 5,
+      "dur": 6,
+      "slot": "volume",
+      "delta": -0.08,
+      "profile": "ramp",
+      "ramp": 2,
+      "recover": 3
+    },
+    {
+      "id": "M-REV-03",
+      "name": "隔壁新开一家 24h 健身房",
+      "start": 7,
+      "dur": 12,
+      "slot": "volume",
+      "delta": -0.14,
+      "profile": "ramp",
+      "ramp": 3,
+      "recover": 4
+    },
+    {
+      "id": "M-COST-03",
+      "name": "最低工资与社保基数上调",
+      "start": 9,
+      "dur": null,
+      "slot": "fixed_cost",
+      "delta": 0.06,
+      "profile": "step"
+    },
+    {
+      "id": "M-RISK-03",
+      "name": "异地健身房跑路上热搜，年卡转化骤降",
+      "start": 11,
+      "dur": 5,
+      "slot": "volume",
+      "delta": -0.1,
+      "profile": "pulse",
+      "tau": 2
+    },
+    {
+      "id": "M-RISK-01",
+      "name": "预付卡专项检查罚款",
+      "start": 13,
+      "dur": 1,
+      "slot": "cash_once",
+      "delta": -30000,
+      "profile": "step"
+    },
+    {
+      "id": "M-COST-03",
+      "name": "房租到期涨租 12%",
+      "start": 15,
+      "dur": null,
+      "slot": "fixed_cost",
+      "delta": 0.11,
+      "profile": "step"
+    },
+    {
+      "id": "M-COST-05",
+      "name": "跑步机集中更换",
+      "start": 18,
+      "dur": 1,
+      "slot": "cash_once",
+      "delta": -60000,
+      "profile": "step"
+    },
+    {
+      "id": "M-RISK-03",
+      "name": "续费期口碑下滑（器械故障+卫生投诉）",
+      "start": 20,
+      "dur": 4,
+      "slot": "volume",
+      "delta": -0.12,
+      "profile": "ramp",
+      "ramp": 2
+    }
+  ],
+  "demo_actions": [
+    {
+      "at": 7,
+      "id": "A-PRICE-01",
+      "name": "年卡提价 8%",
+      "params": {
+        "price_delta": 0.08
+      }
+    },
+    {
+      "at": 7,
+      "id": "A-GROW-04",
+      "name": "老会员续费激励",
+      "params": {
+        "churn_reduction": 0.2,
+        "margin_give_up": 0.03
+      }
+    },
+    {
+      "at": 10,
+      "id": "A-COST-02",
+      "name": "重谈租约（以退租为筹码）",
+      "params": {
+        "reduction": 0.1
+      }
+    },
+    {
+      "at": 14,
+      "id": "A-GROW-03",
+      "name": "上团课/私教（提高 ARPU）",
+      "params": {
+        "ticket_gain": 0.1,
+        "volume_gain": 0.03
+      }
+    },
+    {
+      "at": 19,
+      "id": "A-COST-04",
+      "name": "削减非核心支出",
+      "params": {
+        "cut_ratio": 0.25
+      }
+    }
+  ],
+  "generation_queries": [
+    "自助健身房 单店 成本结构 房租 器械折旧 人力 占比 before:2026-11-16",
+    "单用途商业预付卡 健身 监管 备案 罚款 金额 site:gov.cn before:2026-11-16",
+    "健身房 年卡 续费率 行业 平均 before:2026-11-16",
+    "社区健身房 3公里 竞争 门店数 before:2026-11-16"
+  ]
+}

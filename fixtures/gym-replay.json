@@ -1,0 +1,275 @@
+{
+ "intake": {
+  "city": "某市·示例商圈",
+  "industry": "健身",
+  "subtype": "24h 自助健身房",
+  "capital": 200000,
+  "area_sqm": 300,
+  "staff": 2,
+  "customer_source": "自然流",
+  "months": 24,
+  "already_open": true
+ },
+ "queries": [
+  [
+   "trend",
+   "24h 自助健身房 行业 门店数 闭店率 趋势 现状 before:2026-11-17"
+  ],
+  [
+   "price",
+   "24h 自助健身房 客单价 价格 价格战 会员费 before:2026-11-17"
+  ],
+  [
+   "rent",
+   "某市 商铺 租金 每平米 转让费 空置 before:2026-11-17"
+  ],
+  [
+   "policy",
+   "健身房 监管 政策 预付卡 资质 2026 新规 before:2026-11-17"
+  ]
+ ],
+ "search": [
+  {
+   "id": "S1",
+   "title": "健身房换道，旧模式干不下去了",
+   "url": "https://example.com/a1",
+   "fact": "2025 年健身工作室消失 2.4 万家，闭店率约 57%；24 小时健身房门店数同比 +53%；年卡均价 3838.5 元。",
+   "date": "2026-03-11",
+   "authority": 3,
+   "score": 2.4
+  },
+  {
+   "id": "S2",
+   "title": "预付式消费新规落地：资金存管与限额",
+   "url": "https://example.com/a2",
+   "fact": "地方市场监管要求预付卡资金存管，单卡限额与冷静期制度推行，健身房预收模式受约束。",
+   "date": "2026-06-02",
+   "authority": 4,
+   "score": 2.1
+  },
+  {
+   "id": "S3",
+   "title": "某市商铺租金行情（2026 年 10 月）",
+   "url": "https://example.com/a3",
+   "fact": "某市主城区临街商铺挂牌租金 27-30 元/㎡/月，示例商圈商圈空置率上升，可谈免租 1-2 个月。",
+   "date": "2026-10-08",
+   "authority": 3,
+   "score": 1.9
+  },
+  {
+   "id": "S4",
+   "title": "四川体育消费券持续发放至 2027 年 3 月",
+   "url": "https://example.com/a4",
+   "fact": "四川省体育消费券覆盖健身场馆，单笔满 100 减 30，持续至 2027 年 3 月。",
+   "date": "2026-09-20",
+   "authority": 4,
+   "score": 1.7
+  },
+  {
+   "id": "S5",
+   "title": "某自媒体：县城健身房月卡 99 元走量",
+   "url": "https://example.com/a5",
+   "fact": "某市某健身房月卡 99 元，靠低价走量，续卡率不足三成。",
+   "date": "2026-08-01",
+   "authority": 1,
+   "score": 1.6
+  }
+ ],
+ "llm": {
+  "brief": [
+   "24 小时自助模式在扩张（+53%），传统工作室在大面积出清（闭店率 57%）（S1）",
+   "预付卡资金存管与限额在推，靠卖年卡回血的路径在收窄（S2）",
+   "某市主城区临街租金 27-30 元/㎡/月，商圈空置上升，可谈免租（S3）",
+   "四川体育消费券覆盖健身场馆，持续到 2027 年 3 月，对到店有拉动（S4）"
+  ],
+  "facts": [
+   {
+    "claim": "24 小时自助模式门店数同比 +53%",
+    "slot": "volume",
+    "direction": "up",
+    "magnitude": [
+     0.05,
+     0.12
+    ],
+    "confidence": 0.7,
+    "evidence_ids": [
+     "S1"
+    ]
+   },
+   {
+    "claim": "预付资金存管收紧，年卡预收受限",
+    "slot": "revenue",
+    "direction": "down",
+    "magnitude": [
+     0.05,
+     0.15
+    ],
+    "confidence": 0.6,
+    "evidence_ids": [
+     "S2"
+    ]
+   }
+  ],
+  "events": [
+   {
+    "id": "E-SNAP-01",
+    "name": "低价玩家分流",
+    "window": [
+     5,
+     14
+    ],
+    "p": 0.75,
+    "slot": "volume",
+    "delta": [
+     -0.18,
+     -0.09
+    ],
+    "dur": 4,
+    "profile": "ramp",
+    "recover": false,
+    "group": null,
+    "why": "本地出现 99 元月卡走量对手",
+    "evidence_ids": [
+     "S5"
+    ]
+   },
+   {
+    "id": "E-SNAP-02",
+    "name": "预付监管检查",
+    "window": [
+     3,
+     10
+    ],
+    "p": 0.85,
+    "slot": "cash",
+    "delta": [
+     -0.4,
+     -0.4
+    ],
+    "dur": 1,
+    "profile": "step",
+    "recover": false,
+    "why": "资金存管要求，需一次性补足",
+    "evidence_ids": [
+     "S2"
+    ]
+   },
+   {
+    "id": "E-SNAP-03",
+    "name": "消费券拉动",
+    "window": [
+     2,
+     8
+    ],
+    "p": 0.5,
+    "slot": "volume",
+    "delta": [
+     0.1,
+     0.22
+    ],
+    "dur": 3,
+    "profile": "ramp",
+    "recover": true,
+    "why": "体育消费券覆盖本店",
+    "evidence_ids": [
+     "S4"
+    ]
+   },
+   {
+    "id": "E-SNAP-04",
+    "name": "路边施工",
+    "window": [
+     4,
+     6
+    ],
+    "p": 0.4,
+    "slot": "volume",
+    "delta": [
+     -0.3,
+     -0.2
+    ],
+    "dur": 2,
+    "profile": "step",
+    "recover": true,
+    "why": "没有本次证据，属于惯性猜测"
+   },
+   {
+    "id": "E-SNAP-05",
+    "name": "会员大规模退费",
+    "window": [
+     6,
+     12
+    ],
+    "p": 0.3,
+    "slot": "volume",
+    "delta": [
+     -0.62,
+     -0.5
+    ],
+    "dur": 3,
+    "profile": "step",
+    "recover": false,
+    "why": "力度明显超出常识",
+    "evidence_ids": [
+     "S5"
+    ]
+   }
+  ],
+  "action_success": [
+   {
+    "id": "A-COST-02",
+    "delta": 0.15,
+    "why": "空置率上升，房东更愿意谈",
+    "evidence_ids": [
+     "S3"
+    ]
+   },
+   {
+    "id": "A-PRICE-01",
+    "delta": 0.4,
+    "why": "提价离谱",
+    "evidence_ids": [
+     "S1"
+    ]
+   },
+   {
+    "id": "A-FIN-09",
+    "delta": 0.2,
+    "why": "动作不存在",
+    "evidence_ids": [
+     "S1"
+    ]
+   }
+  ],
+  "params": [
+   {
+    "id": "A-GROW-02",
+    "key": "channel_fee",
+    "value": 0.14,
+    "why": "平台佣金结构变化",
+    "evidence_ids": [
+     "S1"
+    ]
+   },
+   {
+    "id": "A-GROW-03",
+    "key": "made_up_param",
+    "value": 1,
+    "why": "参数名不存在",
+    "evidence_ids": [
+     "S1"
+    ]
+   }
+  ],
+  "derived": {
+   "rent_per_sqm": 28,
+   "rent_note": "示例商圈 27 元/㎡/月（S3）+ 某市挂牌 30 元，取 28",
+   "wage": 3000,
+   "wage_note": "县级市服务岗兜底值，无本次抓取证据",
+   "franchise_terms": null
+  },
+  "not_changed": [
+   "年卡均价 3838.5 元是全国口径，落到某市单店没有依据，不改 price 基线"
+  ]
+ }
+}

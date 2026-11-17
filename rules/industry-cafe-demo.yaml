@@ -1,0 +1,199 @@
+# 行业包示例：独立咖啡店（中国·城市商圈）
+# 本文件不含任何因果逻辑——全部因果来自 rules/_mechanisms.yaml
+# 本文件只提供：参数（baseline）+ 槽位映射（slot_map）+ 暴露度问卷（exposure）
+# 用途：证明"不懂这个行业的人也能生成一个可跑的行业包"
+
+meta:
+  pack_id: industry-cafe-cn-urban
+  name: 独立咖啡店（城市商圈）
+  version: 0.1.0
+  status: draft          # draft | reviewed | validated
+  generated_by: "LLM 从公开资料归纳，未经人工抽检"
+  maintainer: ""
+  confidence: 0.5
+  sources:
+    - { topic: 成本结构, ref: "餐饮行业研报·成本拆分章节", verified: false }
+    - { topic: 处罚量级, ref: "《食品安全法》罚则 + 各地市监局处罚公示", verified: false }
+    - { topic: 存活率, ref: "建议改用工商注销数据核算", verified: false }
+  note: "所有数字待抽检。抽检只需核对 4 项：成本结构加总≈1、监管强度、处罚区间、渠道集中度"
+
+# ── 经营形态与能力：决定"哪些动作存在"（逻辑在 _applicability.yaml）──
+archetype: single_site_service
+capability_overrides:
+  headcount: 3              # 店长 + 2 咖啡师，没有可裁的冗余
+  prepaid_license: none     # 咖啡店不卖预付卡（也无备案）
+  channel_count: 1          # 只有到店；外卖尚未开
+  crm_maturity: 0.45        # 有收银系统但无会员体系
+
+# ── 行业基线：只有数字，没有逻辑 ──
+# 注意：cost_structure 仅为参考值（用于抽检合理性），不参与计算
+# 计算只认 *_share 系列字段（均为"占收入比"），避免两个真源互相矛盾
+baseline:
+  cost_structure:        { rent: 0.18, labor: 0.22, material: 0.33, other: 0.27 }   # 参考值
+  rent_cost_share:       0.27     # 占收入比（唯一真源，单店实际值；行业均值取 0.18~0.22）
+  material_cost_share:   0.36     # 占收入比（唯一真源）
+  labor_cost_share:      0.26     # 占收入比（唯一真源）
+  other_cost_share:      0.11     # 占收入比
+  growth_assumption:     [-0.01, 0.015]   # 月增长率区间，未建模但主导结论 → 必须作为扫描参数
+  growth_source: "无公开基线，需用同商圈同类店的历史流水回填；当前为待校准占位区间"
+  demand_volatility:     0.08     # 月需求波动 σ（先验）：到店业态对天气/商圈人流最敏感
+  regulatory_intensity:  0.65     # 食品安全：中高
+  channel_concentration: 0.55     # 到店客流依赖
+  price_elasticity:      0.70
+  competition_intensity: 0.75     # 同商圈替代品密集
+  supply_chain_depth:    0.40
+  trust_sensitivity:     0.70     # 食品安全事故后信任恢复慢
+  word_of_mouth_weight:  0.65
+  penalty_scale:         [5000, 100000]    # 同类违规罚款区间
+  enforcement_frequency: 0.70              # 被检查频次
+  survival_rate_24m:     0.45              # 用于校准生存分（待核）
+  baseline_churn:        0.06              # 月度客户流失/不复购
+
+  # ── v0.2 补齐的三个字段（跨行业校验时发现咖啡店也需要，原包缺省会走默认值）──
+  capacity_ceiling:      1.20              # 吧台/座位固定，最多再加 20% 出杯能力
+  key_person_dependency: 0.35              # 店长/主咖离职会掉出品稳定性，但比中餐厨师低
+  quality_visibility:    0.55              # 换豆子/换奶，一部分老客能喝出来
+  prepaid_ratio:         0.00              # 咖啡店一般不卖预付卡
+  labor_rigidity:        0.45              # 熟手咖啡师稀缺，裁了难补
+
+# ── 槽位映射：把机理的"语义槽位"接到本行业的具体字段 ──
+slot_map:
+  fixed_cost:    [rent, labor, utilities]
+  unit_cost:     [material_cost_per_cup]
+  variable_cost: [platform_commission, delivery_fee]
+  volume:        [daily_orders]
+  price:         [avg_ticket]
+  churn:         [repeat_rate_inverse]
+  capacity:      [daily_capacity]
+  revenue:       [monthly_revenue]
+  cash:          [cash_balance]
+  valuation:     [store_valuation]
+
+# ── 典型单店初值（引擎起点；与 04-纸上演算 的假设一致）──
+operations:
+  price:            26
+  volume:           120
+  days:             30
+  fixed_cost:       59000       # 房租 25,000 + 人力 24,000 + 其他 10,000
+  unit_cost:        9.36        # 26 × 36%
+  var_rate:         0.02
+  capacity:         145
+  cash:             300000
+  liability:        0           # 无预付卡
+  # 开业投入的资产形态（不是费用）：退出时按这四项各自的残值变现
+  assets:
+    transfer:  0          # 转让费
+    fitout:    220000     # 装修（按租期 36 个月摊）
+    equipment: 150000     # 咖啡机/制冰/家具（按 60 个月摊）
+    deposit:   30000      # 押金（不摊，退租议退）
+
+prepaid:
+  enabled: false
+
+# ── 演示用外部冲击（与 04-纸上演算 同一组事件）──
+demo_events:
+  - { id: R-CAFE-LOCAL-01, name: "道路施工封路",   start: 4,  dur: 3,  slot: volume,    delta: -0.25, profile: step, recover: 2 }
+  - { id: R-CAFE-MKT-01,   name: "连锁品牌入驻",   start: 8,  dur: null, slot: price,   delta: -0.08, profile: ramp, ramp: 3 }
+  - { id: R-CAFE-COST-01,  name: "咖啡豆涨价",     start: 10, dur: null, slot: unit_cost, delta: +0.055, profile: step }
+  - { id: R-CAFE-POL-01,   name: "食安检查被罚",   start: 12, dur: 2,  slot: volume,    delta: -0.10, profile: step, recover: 3 }
+  - { id: R-CAFE-POL-01-B, name: "罚款",           start: 12, dur: 1,  slot: cash_once, delta: -30000 }
+  - { id: M-COST-04,       name: "平台佣金上调",   start: 14, dur: null, slot: var_rate, delta: +0.016, profile: step }
+  - { id: R-CAFE-LOCAL-02, name: "地铁施工",       start: 16, dur: 6,  slot: volume,    delta: -0.15, profile: step, recover: 3 }
+
+demo_actions:
+  - { at: 7,  id: A-PRICE-01, name: "提价 8%",            params: { price_delta: 0.08 } }
+  - { at: 7,  id: A-COST-02,  name: "重谈租约",            params: { reduction: 0.12 } }
+  - { at: 9,  id: A-GROW-02,  name: "开外卖渠道",          params: { volume_gain: 0.18, channel_fee: 0.18 } }
+  - { at: 15, id: A-COST-04,  name: "削减非核心支出 15%",  params: { cut_ratio: 0.15 } }
+
+# ── 暴露度问卷：用户只需要回答事实，不需要判断影响 ──
+exposure:
+  - key: channel_dependency
+    question: 你的收入里，来自"这条街/这个商场到店客流"的比例大约是？
+    options: { "低于30%": 0.3, "30%-70%": 0.6, "70%以上": 0.9 }
+  - key: rent_burden
+    question: 房租占你月支出的比例？
+    options: { "低于15%": 0.3, "15%-25%": 0.6, "25%以上": 0.9 }
+  - key: single_supplier_dependency
+    question: 咖啡豆/鲜奶的主要供应商是否只有一家？
+    options: { "有两家以上可替换": 0.3, "一家但可换": 0.6, "只有一家且难换": 0.9 }
+  - key: contract_price_lock
+    question: 你的原料采购有长期锁价合同吗？
+    options: { "有，剩余6个月以上": 0.2, "有，剩余不足6个月": 0.5, "没有": 0.8 }
+  - key: customer_concentration
+    question: 单一客群（比如某栋写字楼、某所学校）占你客流多少？
+    options: { "分散": 0.3, "较集中": 0.6, "高度集中": 0.9 }
+  - key: license_dependency
+    question: 你有几张食品经营许可证/几个门店可以互相支援？
+    options: { "多店可调配": 0.3, "单店但可外送": 0.6, "单店且不能外送": 0.9 }
+  - key: compliance_maturity
+    question: 近 12 个月是否被检查/被罚过？
+    options: { "没被检查": 0.2, "检查过无问题": 0.4, "被罚过": 0.9 }
+  - key: runway_months
+    question: 如果明天营业额归零，现金能撑几个月？
+    options: { "6个月以上": 0.3, "3-6个月": 0.6, "不到3个月": 0.9 }
+
+# ── 由机理自动组合出的规则（不是手写，是装配） ──
+derived_rules:
+
+  - id: R-CAFE-POL-01
+    name: 食品安全专项检查加严
+    mechanism: [M-COST-01, M-RISK-01, M-RISK-03]
+    trigger_keywords: [食品安全, 专项检查, 抽检, 明厨亮灶, 添加剂]
+    assembly:
+      - mech: M-COST-01
+        target: fixed_cost
+        calc: "k[0.05,0.30] × baseline.regulatory_intensity(0.65) × exposure.compliance_maturity × s"
+        expect: "月固定成本 +3% ~ +12%"
+      - mech: M-RISK-01
+        target: cash
+        calc: "baseline.penalty_scale[5000,100000] × exposure.compliance_maturity × p(被罚)"
+        expect: "单次罚款 0.5 万 ~ 9 万"
+      - mech: M-RISK-03
+        target: volume
+        calc: "k[0.10,0.45] × baseline.trust_sensitivity(0.70) × exposure.customer_concentration × s"
+        expect: "若被公开通报，客流 -7% ~ -28%，2 个月衰减"
+
+  - id: R-CAFE-LOCAL-01
+    name: 商圈改造/道路施工封路
+    mechanism: [M-REV-03]
+    trigger_keywords: [道路施工, 封闭, 商圈改造, 拆迁, 地铁施工]
+    assembly:
+      - mech: M-REV-03
+        target: volume
+        calc: "k[0.10,0.60] × baseline.channel_concentration(0.55) × exposure.channel_dependency × s"
+        expect: "封路期间客流 -17% ~ -30%（e=0.9 时接近上限）"
+    notes: "典型的'外部干预'——不来自政策也不来自竞争，但真实存在，通用机理能覆盖"
+
+  - id: R-CAFE-MKT-01
+    name: 连锁品牌入驻同商圈
+    mechanism: [M-REV-02, M-REV-04]
+    trigger_keywords: [开业, 连锁, 入驻, 新店, 价格战, 9.9元]
+    assembly:
+      - mech: M-REV-02
+        target: price
+        calc: "k[0.05,0.30] × baseline.price_elasticity(0.70) × (1 - exposure 差异化) × s"
+        expect: "客单价承压 -4% ~ -16%"
+      - mech: M-REV-04
+        target: churn
+        calc: "k[0.10,0.80] × baseline.competition_intensity(0.75) × exposure.customer_concentration × s"
+        expect: "复购下滑，月流失 +8% ~ +20%"
+    decision_point:
+      options: [跟价保份额, 维持价格做差异化, 强化外送绕开到店竞争]
+
+  - id: R-CAFE-COST-01
+    name: 咖啡豆/鲜奶涨价
+    mechanism: [M-COST-02]
+    trigger_keywords: [咖啡豆, 期货, 减产, 涨价, 生豆, 奶价]
+    assembly:
+      - mech: M-COST-02
+        target: unit_cost
+        calc: "k[0.03,0.25] × baseline.material_cost_share(0.33) × exposure.single_supplier_dependency × (1 - exposure.contract_price_lock) × s"
+        expect: "单杯成本 +2% ~ +7%；无锁价且单一供应商时取上限"
+
+# ── 生成这个包只需要跑 4 次检索 ──
+generation_queries:
+  - "独立咖啡店 成本结构 房租 人力 食材 占比 after:2024-01-01 before:2026-11-16"
+  - "食品安全法 处罚 标准 餐饮 罚款 金额 site:gov.cn before:2026-11-16"
+  - "咖啡店 倒闭率 存活率 工商 注销 数据 before:2026-11-16"
+  - "咖啡 行业 竞争 连锁 门店数 增长 商圈 before:2026-11-16"

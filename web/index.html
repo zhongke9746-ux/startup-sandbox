@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>创业沙盒</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --line:#e4e7ec; --line2:#eef0f3;
+    --ink:#171a1f; --muted:#6b7280; --muted2:#9aa1ab;
+    --accent:#0f766e; --accent-soft:#e6f4f1;
+    --warn:#b45309; --warn-soft:#fef6e7;
+    --danger:#b42318; --danger-soft:#fdeceb;
+    --good:#157f3d; --good-soft:#e9f6ee;
+    --cash:#0f766e; --net:#5b5bd6;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent)}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 22px 64px}
+
+  /* 顶栏 */
+  header.top{display:flex;align-items:center;gap:14px;padding:14px 0 20px;border-bottom:1px solid var(--line);margin-bottom:22px}
+  .brand{font-size:17px;font-weight:650;letter-spacing:.2px}
+  .brand span{color:var(--muted);font-weight:400;font-size:13px;margin-left:9px}
+  .top .grow{flex:1}
+  .tagline{font-size:12.5px;color:var(--muted2)}
+  button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 14px;transition:.15s}
+  button:hover{border-color:#cfd4da;background:#fbfbfc}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.primary:hover{background:#0d6b63;border-color:#0d6b63}
+  button.primary:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{border-color:transparent;color:var(--muted);padding:6px 8px}
+  button.ghost:hover{color:var(--ink);background:var(--line2)}
+
+  /* 卡片 */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;margin-bottom:16px}
+  .card h3{margin:0 0 4px;font-size:15px;font-weight:650}
+  .card .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+
+  /* 表单 */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .grid .full{grid-column:1/-1}
+  label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px;font-weight:500}
+  input,select,textarea{
+    width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;
+    font:inherit;font-size:14px;background:#fff;color:var(--ink);outline:none
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .hint{font-size:12px;color:var(--muted2);margin-top:4px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:6px 13px;font-size:13px;cursor:pointer}
+  .chip.on{background:var(--accent-soft);border-color:var(--accent);color:#0b5d56;font-weight:550}
+
+  /* 状态条 */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:16px}
+  .stat{background:var(--panel);padding:13px 15px}
+  .stat .k{font-size:11.5px;color:var(--muted);letter-spacing:.3px}
+  .stat .v{font-size:19px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+  .stat .v.sm{font-size:16px}
+  .stat .x{font-size:11.5px;color:var(--muted2);margin-top:1px}
+
+  /* 触发 */
+  .trig{border-left:3px solid var(--warn);background:var(--warn-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:9px;font-size:14px}
+  .trig b{font-weight:600}
+  .trig .code{font-size:11px;color:#8a6a2f;background:#f9e9c8;border-radius:4px;padding:1px 5px;margin-right:7px;font-family:ui-monospace,monospace}
+
+  /* 动作卡 */
+  .acts{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:12px}
+  .act{border:1px solid var(--line);border-radius:9px;padding:13px 14px;background:#fff;cursor:pointer;transition:.15s;position:relative}
+  .act:hover{border-color:#cfd4da;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+  .act.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
+  .act.dim{opacity:.45;cursor:not-allowed}
+  .act .nm{font-weight:600;font-size:14px;margin-bottom:2px;padding-right:52px}
+  .act .fam{font-size:11.5px;color:var(--muted2);margin-bottom:7px}
+  .act .bl{font-size:12.8px;color:var(--muted);line-height:1.5;min-height:38px}
+  .act .meta{display:flex;gap:10px;font-size:12px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line2);color:var(--muted)}
+  .act .badge{position:absolute;top:12px;right:12px;font-size:11px;padding:2px 7px;border-radius:20px;background:#f2f4f7;color:var(--muted)}
+  .act.on .badge{background:var(--accent);color:#fff}
+  .warnbox{background:var(--warn-soft);color:#8a5a12;border-radius:6px;padding:6px 9px;font-size:12px;margin-top:8px}
+  .intel{background:#f4f7fb;color:#3f5372;border-radius:6px;padding:6px 9px;font-size:11.8px;margin-top:8px;border-left:2px solid #b9c8dd}
+
+  /* 图表 */
+  .chartbox{position:relative;height:210px}
+  canvas{width:100%;height:100%;display:block}
+
+  /* markdown */
+  .md h1,.md h2,.md h3{margin:20px 0 8px;line-height:1.35}
+  .md h2{font-size:18px;border-bottom:1px solid var(--line);padding-bottom:7px}
+  .md h3{font-size:15px}
+  .md p{margin:8px 0}
+  .md ul{margin:8px 0;padding-left:20px}
+  .md li{margin:4px 0}
+  .md table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px}
+  .md th,.md td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  .md th{background:#f8f9fb;font-weight:600;font-size:13px}
+  .md tr:nth-child(even) td{background:#fcfcfd}
+  .md code{background:#f2f4f7;padding:1px 5px;border-radius:4px;font-family:ui-monospace,monospace;font-size:12.5px}
+  .md blockquote{border-left:3px solid var(--line);margin:10px 0;padding:2px 0 2px 14px;color:var(--muted)}
+  .md hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+  .md em{color:var(--muted);font-style:normal;font-size:13px}
+
+  /* 杂项 */
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .spacer{flex:1}
+  .muted{color:var(--muted)}
+  .mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,monospace}
+  .pill{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:20px;background:#f2f4f7;color:var(--muted)}
+  .pill.good{background:var(--good-soft);color:var(--good)}
+  .pill.bad{background:var(--danger-soft);color:var(--danger)}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:#1f242b;color:#fff;padding:11px 18px;border-radius:9px;font-size:13.5px;opacity:0;transition:.25s;pointer-events:none;z-index:50}
+  .toast.show{opacity:1;bottom:36px}
+  .hide{display:none!important}
+  .loading{display:inline-block;width:13px;height:13px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:7px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px}
+  .tab{padding:9px 14px;font-size:14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:550}
+  .story{background:#fbfcfd;border:1px solid var(--line2);border-radius:9px;padding:14px 16px;font-size:14px;white-space:pre-wrap;line-height:1.7}
+  .sessrow{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;cursor:pointer;background:#fff}
+  .sessrow:hover{border-color:#cfd4da;background:#fbfbfc}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">创业沙盒<span>确定性引擎 · 冻结环境 · 决策复盘</span></div>
+    <div class="grow"></div>
+    <div class="tagline" id="hint">本地运行 · 数据不出本机</div>
+    <button class="ghost" id="btnHome">全部会话</button>
+  </header>
+
+  <!-- ① 开局 -->
+  <section id="view-new">
+    <div class="card">
+      <h3>开一局</h3>
+      <p class="sub">你只填事实。店的样子、世界的走向、每个月能做什么，由引擎算。</p>
+
+      <div class="grid">
+        <div class="full">
+          <label>行业（目前只有三个已验证原型）</label>
+          <div class="chips" id="packChips"></div>
+          <div class="hint">其他行业暂无原型。硬套会让结论不可信，所以这里不放。</div>
+        </div>
+
+        <div>
+          <label>地点</label>
+          <input id="f_city" placeholder="填写你所在的城市与商圈">
+        </div>
+        <div>
+          <label>具体类型</label>
+          <input id="f_type" placeholder="如：24h 自助健身房 / 社区精品咖啡店">
+        </div>
+
+        <div>
+          <label>总投入（元）</label>
+          <input id="f_total" type="number" value="280000">
+          <div class="hint">你为这家店一共投入的钱。填了分项（设备/其他）后，剩余部分就是账上现金</div>
+        </div>
+        <div>
+          <label>面积（㎡）</label>
+          <input id="f_area" type="number" value="300">
+        </div>
+
+        <div>
+          <label>员工数（含自己）</label>
+          <input id="f_staff" type="number" value="2">
+        </div>
+        <div>
+          <label>模拟时长（6–36 个月）</label>
+          <input id="f_months" type="number" value="24" min="6" max="36">
+        </div>
+
+        <div class="full">
+          <label>客源结构</label>
+          <div class="chips" id="srcChips">
+            <div class="chip on" data-v="natural">自然流</div>
+            <div class="chip" data-v="mixed">各半</div>
+            <div class="chip" data-v="self">主要靠自主获客</div>
+          </div>
+        </div>
+
+        <div>
+          <label>年租金（元）</label>
+          <input id="f_rent" type="number" placeholder="如 100000；留空=按面积×地区单价推算">
+        </div>
+        <div>
+          <label>月人力成本（元）</label>
+          <input id="f_staffcost" type="number" placeholder="如 6000；留空=按人数×当地工资">
+        </div>
+
+        <div>
+          <label>设备投入（元）</label>
+          <input id="f_equip" type="number" placeholder="如 350000；器械/厨具/家具">
+        </div>
+        <div>
+          <label>其他投入（元）</label>
+          <input id="f_other" type="number" placeholder="装修/转让费/押金/杂项，可合并填">
+        </div>
+
+        <div>
+          <label>实测月度客源 / 活跃会员</label>
+          <input id="f_actual" type="number" placeholder="留空=用原型推算">
+          <div class="hint">⚠️ 全模型最值得填的一格。填了会覆盖原型假设</div>
+        </div>
+        <div>
+          <label>月费 / 客单价（元）</label>
+          <input id="f_price" type="number" placeholder="留空=用原型假设">
+        </div>
+
+        <div>
+          <label>加盟品牌</label>
+          <input id="f_franchise" placeholder="不加盟留空">
+        </div>
+        <div>
+          <label>环境快照（创建时刻的真实世界）</label>
+          <select id="f_snapshot"><option value="">不用快照（内部事件跑）</option></select>
+        </div>
+
+        <div class="full">
+          <label>模型 API（选填：填了就在创建时刻联网抓真实信息，抓完冻结）</label>
+          <input id="f_key" type="password" placeholder="sk-… 只在本机这一次请求里用，不会写进会话">
+          <div class="hint">用 DeepSeek 的 Key（Search 每千次 ¥5）。一次建局 6–8 次搜索 ≈ ¥0.04，外加一次抽取。
+            留空则用内置假设 + 上面选的快照跑。填了这个就忽略上面的快照下拉。</div>
+          <div id="collectMsg" class="muted" style="font-size:12.5px;margin-top:6px"></div>
+        </div>
+
+        <div class="full">
+          <label>其他背景（选填）</label>
+          <textarea id="f_notes" rows="2" placeholder="如：附近有两家瑞幸；房东是熟人；转让费 8 万已付"></textarea>
+        </div>
+
+        <div>
+          <label>随机种子（同种子 = 同一个世界，可复现）</label>
+          <input id="f_seed" type="number" value="2026">
+        </div>
+        <div>
+          <label>会话名</label>
+          <input id="f_name" placeholder="留空自动命名">
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="primary" id="btnNew">开始这一局</button>
+        <span class="muted" id="newMsg" style="font-size:13px"></span>
+      </div>
+    </div>
+
+    <div class="card" id="recentCard">
+      <h3>最近的会话</h3>
+      <p class="sub">都在这台机器上。点开接着玩。</p>
+      <div id="recentList"></div>
+    </div>
+  </section>
+
+  <!-- ② 决策 -->
+  <section id="view-play" class="hide">
+    <div class="row" style="margin-bottom:14px">
+      <div>
+        <div style="font-size:17px;font-weight:650" id="pTitle">—</div>
+        <div class="muted" style="font-size:12.5px" id="pSub">—</div>
+      </div>
+      <div class="spacer"></div>
+      <button id="btnReport">经营评估报告</button>
+      <button id="btnAudit">反事实审计</button>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="card" id="trigCard">
+      <h3 id="trigHead">这个月需要你决定</h3>
+      <div id="trigs"></div>
+      <div id="changes" class="muted" style="font-size:13px;margin-top:6px"></div>
+      <div id="intro" style="margin-top:12px;font-size:13.5px"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:12px">
+        <h3 style="margin:0" id="menuHead">能推的动作</h3>
+        <span class="pill" id="slotPill">—</span>
+        <div class="spacer"></div>
+        <button class="ghost" id="btnClear">清空选择</button>
+      </div>
+      <div class="acts" id="acts"></div>
+      <div class="row" style="margin-top:16px">
+        <button class="primary" id="btnGo" disabled>推进这一月</button>
+        <button id="btnWait">什么都不做</button>
+        <span class="muted" id="goMsg" style="font-size:13px"></span>
+        <div class="spacer"></div>
+        <button class="ghost" id="btnEnd" title="停在当前月，不再推进（可撤回）">结束这一局</button>
+      </div>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none">
+      <h3>本月结算</h3>
+      <div class="story" id="resultStory"></div>
+      <div class="row" style="margin-top:12px" id="resultNums"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:6px">
+        <h3 style="margin:0">账本</h3>
+        <span class="muted" style="font-size:12.5px">实线=现金 · 虚线=净现金（扣掉预收负债）</span>
+      </div>
+      <div class="chartbox"><canvas id="chart"></canvas></div>
+      <div id="events" style="margin-top:10px;font-size:12.5px;color:var(--muted)"></div>
+    </div>
+
+    <div class="card hide" id="blockedCard">
+      <h3>这一手做不了</h3>
+      <p class="sub">不是系统限制，是你的结构不成立。</p>
+      <div id="blockedList"></div>
+    </div>
+  </section>
+
+  <!-- ③ 报告 / 审计 -->
+  <section id="view-doc" class="hide">
+    <div class="row" style="margin-bottom:14px">
+      <button class="ghost" id="btnBack">← 回到决策</button>
+      <div class="spacer"></div>
+      <span class="muted" id="docMsg" style="font-size:13px"></span>
+    </div>
+    <div class="card md" id="docBody"></div>
+  </section>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
+const money = v => (v < 0 ? "−¥" : "¥") + Math.abs(Math.round(v)).toLocaleString("zh-CN");
+
+let META = null, SID = null, POINT = null, SEL = new Set(), BUSY = false;
+
+function toast(msg, ms = 2200) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), ms);
+}
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(() => ({ error: "响应无法解析" }));
+  if (!r.ok || j.error) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+function show(id) {
+  ["view-new", "view-play", "view-doc"].forEach(v => $("#" + v).classList.toggle("hide", v !== id));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ───────── 极简 markdown（报告/审计用，我们自己产出，语法可控）───────── */
+function md(src) {
+  const lines = String(src).replace(/\r/g, "").split("\n");
+  let out = [], i = 0, list = null, tbl = null;
+  const inline = s => s
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/~~([^~]+)~~/g, "<s>$1</s>");
+  const flushList = () => { if (list) { out.push("<ul>" + list.join("") + "</ul>"); list = null; } };
+  const flushTbl = () => {
+    if (!tbl) return;
+    const rows = tbl.map(r => r.split("|").slice(1, -1).map(c => c.trim()));
+    let h = "<table><thead><tr>" + rows[0].map(c => `<th>${inline(c)}</th>`).join("") + "</tr></thead><tbody>";
+    for (let r = 2; r < rows.length; r++) h += "<tr>" + rows[r].map(c => `<td>${inline(c)}</td>`).join("") + "</tr>";
+    out.push(h + "</tbody></table>"); tbl = null;
+  };
+  for (; i < lines.length; i++) {
+    const L = lines[i];
+    if (/^\|.*\|$/.test(L.trim())) { flushList(); (tbl = tbl || []).push(L.trim()); continue; }
+    flushTbl();
+    if (!L.trim()) { flushList(); continue; }
+    if (/^#{1,4}\s/.test(L)) { flushList(); const n = L.match(/^#+/)[0].length; out.push(`<h${Math.min(4, n + 1)}>${inline(L.replace(/^#+\s*/, ""))}</h${Math.min(4, n + 1)}>`); continue; }
+    if (/^---+$/.test(L.trim())) { flushList(); out.push("<hr>"); continue; }
+    if (/^>\s?/.test(L)) { flushList(); out.push(`<blockquote>${inline(L.replace(/^>\s?/, ""))}</blockquote>`); continue; }
+    if (/^[-*]\s+/.test(L)) { (list = list || []).push(`<li>${inline(L.replace(/^[-*]\s+/, ""))}</li>`); continue; }
+    flushList();
+    out.push(`<p>${inline(L)}</p>`);
+  }
+  flushList(); flushTbl();
+  return out.join("\n");
+}
+
+/* ───────── 开局 ───────── */
+let SEL_PACK = "cafe", SEL_SRC = "natural";
+
+async function boot() {
+  META = await api("/api/meta");
+  const pc = $("#packChips"); pc.innerHTML = "";
+  META.packs.forEach((p, idx) => {
+    const c = el("div", "chip" + (idx === 0 ? " on" : ""), p.name);
+    c.onclick = () => { SEL_PACK = p.key; [...pc.children].forEach(x => x.classList.remove("on")); c.classList.add("on"); };
+    pc.appendChild(c);
+  });
+  SEL_PACK = META.packs[0]?.key || "cafe";
+
+  const sel = $("#f_snapshot");
+  META.snapshots.forEach(s => {
+    const o = el("option"); o.value = s.file;
+    o.textContent = `${s.label}（${s.asof}｜${s.sources} 个来源）`;
+    sel.appendChild(o);
+  });
+
+  $("#srcChips").onclick = e => {
+    const c = e.target.closest(".chip"); if (!c) return;
+    SEL_SRC = c.dataset.v; [...$("#srcChips").children].forEach(x => x.classList.remove("on")); c.classList.add("on");
+  };
+
+  await loadRecent();
+}
+
+async function loadRecent() {
+  const { sessions } = await api("/api/sessions");
+  const box = $("#recentList"); box.innerHTML = "";
+  if (!sessions.length) { box.innerHTML = '<div class="muted" style="font-size:13px">还没有会话。上面填表开一局。</div>'; return; }
+  sessions.reverse().forEach(s => {
+    const r = el("div", "sessrow");
+    r.innerHTML = `<div style="flex:1"><b>${s.sid}</b>
+      <span class="muted" style="font-size:12.5px"> · ${s.pack_name || ""}</span></div>
+      <span class="pill ${s.over ? "bad" : "good"}">${s.over ? "已结束" : "进行中"}</span>
+      <span class="muted mono" style="font-size:12.5px">第 ${s.month}/${s.months_total} 月</span>`;
+    r.onclick = () => enter(s.sid);
+    box.appendChild(r);
+  });
+}
+
+$("#btnNew").onclick = async () => {
+  if (BUSY) return; BUSY = true;
+  const btn = $("#btnNew"); btn.disabled = true; $("#newMsg").innerHTML = '<span class="loading"></span>正在派生你的店、冻结环境…';
+  try {
+    const intake = {
+      city: $("#f_city").value.trim() || "未填",
+      industry: SEL_PACK === "cnrest" ? "cnrestaurant" : SEL_PACK,
+      shop_type: $("#f_type").value.trim() || "",
+      total_invested: +$("#f_total").value || 0,
+      capital: null,
+      area_sqm: +$("#f_area").value || 0,
+      staff: +$("#f_staff").value || 1,
+      customer_source: SEL_SRC,
+      franchise: $("#f_franchise").value.trim() || null,
+      resources: "",
+      months: +$("#f_months").value || 24,
+      notes: $("#f_notes").value.trim(),
+      model_api: "manual",
+      already_open: true,
+      actual_volume: $("#f_actual").value ? +$("#f_actual").value : null,
+      price: $("#f_price").value ? +$("#f_price").value : null,
+      rent_annual: $("#f_rent").value ? +$("#f_rent").value : null,
+      staff_cost: $("#f_staffcost").value ? +$("#f_staffcost").value : null,
+      equipment: $("#f_equip").value ? +$("#f_equip").value : null,
+      other_invested: $("#f_other").value ? +$("#f_other").value : null,
+    };
+    const body = {
+      pack: SEL_PACK, seed: +$("#f_seed").value || 2026,
+      name: $("#f_name").value.trim() || null,
+      months: +$("#f_months").value || 24,
+      intake, snapshot: $("#f_snapshot").value || null,
+    };
+
+    // 填了 Key 就先联网抓（L0），抓到的快照再用来开局
+    const key = ($("#f_key").value || "").trim();
+    if (key) {
+      $("#newMsg").innerHTML = '<span class="loading"></span>正在联网抓取这个地点、这个行业的真实信息（约 30–60 秒）…';
+      $("#collectMsg").textContent = "";
+      const { job } = await api("/api/job/collect", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intake, key })
+      });
+      let got = null;
+      for (let i = 0; i < 200; i++) {
+        await new Promise(r => setTimeout(r, 900));
+        const j = await api("/api/job/" + job);
+        if (j.status === "done") { got = j.result; break; }
+        if (j.status === "error") throw new Error(j.error);
+      }
+      if (!got) throw new Error("抓取超时（超过 3 分钟）");
+      body.snapshot = got.snapshot;
+      $("#collectMsg").innerHTML =
+        `抓到 <b>${got.sources}</b> 条来源、<b>${got.events}</b> 个事件、<b>${got.adjusted}</b> 处动作修正`
+        + `（${got.clamped} 处被压回机理边界，${got.dropped} 条无证据未采用）`
+        + (got.brief.length ? "<br>" + got.brief.slice(0, 4).map(b => "· " + b).join("<br>") : "");
+      $("#newMsg").innerHTML = '<span class="loading"></span>环境冻结完成，正在派生你的店…';
+    }
+    const r = await api("/api/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    SID = r.sid; SEL.clear();
+    renderPoint(r.point); drawChart(r.ledger);
+    show("view-play"); await loadRecent();
+  } catch (e) {
+    $("#newMsg").textContent = "失败：" + e.message;
+  } finally { BUSY = false; btn.disabled = false; }
+};
+
+$("#btnHome").onclick = () => { SID = null; show("view-new"); loadRecent(); };
+
+/* ───────── 决策页 ───────── */
+async function enter(sid) {
+  SID = sid; SEL.clear();
+  try {
+    const r = await api("/api/session/" + encodeURIComponent(sid));
+    POINT = r.point; renderPoint(POINT); drawChart(r.ledger); show("view-play");
+  } catch (e) { toast("打不开：" + e.message); }
+}
+
+function renderPoint(p) {
+  POINT = p; SEL.clear();
+  if (!p || p.over) return renderEnd(p);
+
+  // 从「结束」态继续时，把被隐藏的推进按钮和网格列数恢复回来
+  ["#btnGo", "#btnWait", "#btnEnd"].forEach(s => $(s).classList.remove("hide"));
+  $("#acts").style.gridTemplateColumns = "";
+  $("#menuHead").textContent = "能推的动作";
+  $("#trigHead").textContent = "这个月需要你决定";
+
+  $("#pTitle").textContent = p.pack_name;
+  $("#pSub").textContent = `第 ${p.month} / ${p.months_total} 个月 · 本月 ${p.slots} 个动作位 · 种子 ${""}`;
+  $("#pSub").textContent = `第 ${p.month} / ${p.months_total} 个月 · 本月 ${p.slots} 个动作位`;
+
+  const s = p.state;
+  const st = $("#stats"); st.innerHTML = "";
+  const cells = [
+    ["账上现金", money(s.cash), "", "cash"],
+    ["净现金（扣预收）", money(s.net), "", "net"],
+    ["净资产（含资产）", money(s.net_worth ?? s.net), "", "worth"],
+    ["总投入", money(s.capital ?? 0), "", "cap"],
+    ["跑道", (s.runway > 90 ? "充裕" : s.runway.toFixed(1) + " 个月"), "", "run"],
+    [s.vol_label || "客流", Math.round(s.vol).toLocaleString("zh-CN"), "", "vol"],
+    [s.price_label || "客单", "¥" + Math.round(s.price), "", "price"],
+    ["产能利用", Math.round(s.util * 100) + "%", "", "util"],
+    ["上月净利", (s.profit >= 0 ? "+" : "−") + money(Math.abs(s.profit)).replace("¥", "¥"), "", "prof"],
+  ];
+  cells.forEach(([k, v, x, key]) => {
+    const d = el("div", "stat");
+    d.innerHTML = `<div class="k">${k}</div><div class="v ${key === "prof" ? (s.profit < 0 ? "" : "") : ""}" style="${key === "profit" ? "" : ""}">${v}</div>`;
+    if (key === "prof" && s.profit < 0) d.querySelector(".v").style.color = "var(--danger)";
+    if (key === "prof" && s.profit > 0) d.querySelector(".v").style.color = "var(--good)";
+    if (key === "util" && s.util >= 0.95) d.querySelector(".v").style.color = "var(--warn)";
+    if (key === "run" && s.runway < 3) d.querySelector(".v").style.color = "var(--danger)";
+    st.appendChild(d);
+  });
+
+  const tg = $("#trigs"); tg.innerHTML = "";
+  (p.triggers || []).forEach(t => {
+    tg.appendChild(el("div", "trig", `<span class="code">${t.code}</span><b>${t.text}</b>`));
+  });
+  if (!p.triggers?.length) tg.appendChild(el("div", "muted", "没有特别的事，但月度例会还是要开。"));
+
+  $("#changes").textContent = (p.changes && p.changes.length) ? "自上次决策：" + p.changes.join("、") : "";
+  const intro = $("#intro");
+  intro.innerHTML = "";
+  if (p.intro && p.intro.length) {
+    intro.appendChild(el("div", "", '<div style="font-weight:600;margin-bottom:6px">你接手的是一家这样的店</div>'));
+    const ul = el("ul"); ul.style.margin = "0"; ul.style.paddingLeft = "20px";
+    p.intro.forEach(x => ul.appendChild(el("li", "", x)));
+    intro.appendChild(ul);
+  }
+
+  $("#slotPill").textContent = p.slots > 0 ? `还能选 ${p.slots} 个` : "带宽用尽";
+  const acts = $("#acts"); acts.innerHTML = "";
+  if (!p.options.length) acts.appendChild(el("div", "muted", "这个月没有可推的动作。"));
+  p.options.forEach(o => {
+    const card = el("div", "act");
+    const cost = o.one_time > 0 ? money(o.one_time) : "无一次性支出";
+    card.innerHTML = `
+      <div class="badge">${o.family_label}</div>
+      <div class="nm">${o.name}</div>
+      <div class="fam">${o.tier === "weak" ? "弱可用 · " : ""}${o.reversibility === "low" ? "不可逆" : o.reversibility === "high" ? "可逆" : "部分可逆"}</div>
+      <div class="bl">${o.blurb || ""}</div>
+      <div class="meta"><span>${cost}</span><span>·</span><span>${o.confidence}</span></div>
+      ${(o.warnings || []).map(w => `<div class="warnbox">⚠️ ${w}</div>`).join("")}
+      ${o.intel ? `<div class="intel">情报：${o.intel}</div>` : ""}`;
+    if (!o.affordable) card.classList.add("dim");
+    card.onclick = () => toggle(o, card);
+    acts.appendChild(card);
+  });
+
+  const bl = $("#blockedList");
+  if (p.blocked?.length) {
+    $("#blockedCard").classList.remove("hide");
+    bl.innerHTML = p.blocked.map(b => `<div style="padding:8px 0;border-bottom:1px solid var(--line2)">
+      <b>${b.name}</b> <span class="muted" style="font-size:13px">— ${b.why}</span></div>`).join("");
+  } else $("#blockedCard").classList.add("hide");
+
+  $("#resultCard").style.display = "none";
+  updateGo();
+}
+
+function toggle(o, card) {
+  if (!o.affordable) return toast("这一手现在付不起");
+  if (SEL.has(o.id)) { SEL.delete(o.id); card.classList.remove("on"); }
+  else {
+    if (SEL.size >= POINT.slots) return toast(`本月只有 ${POINT.slots} 个动作位`);
+    SEL.add(o.id); card.classList.add("on");
+  }
+  updateGo();
+}
+function updateGo() {
+  const n = SEL.size;
+  $("#btnGo").disabled = n === 0;
+  $("#btnGo").textContent = n ? `推进这一月（${n} 个动作）` : "推进这一月";
+  $("#goMsg").textContent = n ? [...SEL].join("、") : "";
+}
+$("#btnClear").onclick = () => { SEL.clear(); document.querySelectorAll(".act").forEach(a => a.classList.remove("on")); updateGo(); };
+
+async function push(choices) {
+  if (BUSY) return; BUSY = true;
+  const btns = ["#btnGo", "#btnWait"].map(s => $(s));
+  btns.forEach(b => b.disabled = true);
+  $("#goMsg").innerHTML = '<span class="loading"></span>结算中…';
+  try {
+    const r = await api("/api/choose/" + encodeURIComponent(SID), {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ choices })
+    });
+    showResult(r.result);
+    const { ledger } = await api("/api/ledger/" + encodeURIComponent(SID));
+    drawChart(ledger);
+    renderPoint(r.point);
+    if (r.point?.over) toast("这一局结束了");
+    else if (r.result?.skip) {
+      const ev = r.result.skip.events?.length ? `，其间落地：${r.result.skip.events.join("、")}` : "";
+      toast(`${r.result.skip.span}没有值得打断你的事${ev}`, 3200);
+    }
+  } catch (e) {
+    toast("失败：" + e.message);
+  } finally { BUSY = false; btns.forEach(b => b.disabled = false); updateGo(); }
+}
+
+$("#btnGo").onclick = () => {
+  const choices = [...SEL].map(id => ({ id, params: {} }));
+  if (!choices.length) return;
+  if (!confirm(`确认推进？本月：${choices.map(c => c.id).join("、")}`)) return;
+  push(choices);
+};
+$("#btnWait").onclick = () => { if (confirm("这个月什么都不做？观望也是一种决策。")) push([]); };
+
+/* 随时按停：停在当前已结算的月份，不做资产清算（那是「退出/转让」的事） */
+$("#btnEnd").onclick = async () => {
+  if (BUSY || !SID) return;
+  const m = POINT?.month_now ?? 0, total = POINT?.months_total ?? 0;
+  const msg = m === 0
+    ? "还没有结算任何月份，结束之后这一局就是空账（仍可撤回）。确定结束？"
+    : `结束在第 ${m} 个月？\n\n共 ${total} 个月，还有 ${total - m} 个月不跑了。\n`
+      + "注意：这不是「退出/转让」——资产不会变现回到现金，账就停在这里。\n"
+      + "真要退出，请先在动作里选「退出/转让」，让它把剩余资产折价变现。\n\n"
+      + "结束之后可以点「继续这一局」撤回。";
+  if (!confirm(msg)) return;
+  BUSY = true;
+  const btn = $("#btnEnd"); btn.disabled = true; btn.textContent = "结束中…";
+  try {
+    const r = await api("/api/end/" + encodeURIComponent(SID), {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: null })
+    });
+    renderPoint(r.point);
+    toast("已停在第 " + (r.point?.month_now ?? m) + " 个月，可以看报告了", 2600);
+  } catch (e) {
+    toast("失败：" + e.message);
+  } finally {
+    BUSY = false; btn.disabled = false; btn.textContent = "结束这一局";
+  }
+};
+
+async function doResume() {
+  if (BUSY || !SID) return;
+  BUSY = true;
+  try {
+    const r = await api("/api/resume/" + encodeURIComponent(SID), {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: "{}"
+    });
+    renderPoint(r.point);
+    toast("接着来：回到第 " + r.point.month + " 个月的决策点", 2600);
+  } catch (e) {
+    toast("失败：" + e.message);
+  } finally { BUSY = false; }
+}
+
+function showResult(res) {
+  if (!res) return;
+  $("#resultCard").style.display = "block";
+  $("#resultStory").textContent = res.story || "";
+  const n = $("#resultNums"); n.innerHTML = "";
+  const acc = (res.accepted || []);
+  if (acc.length) {
+    n.appendChild(el("div", "", acc.map(a =>
+      `<span class="pill ${a.ok ? "good" : "bad"}">${a.name} · ${a.ok ? "成了" : "失败"}</span>`).join(" ")));
+  }
+  (res.rejected || []).forEach(r => n.appendChild(el("div", "muted", `被拒：${r.id} — ${r.why}`)));
+  n.appendChild(el("div", "mono", `现金 ${money(res.cash_before)} → <b>${money(res.cash_after)}</b>　净利 ${res.profit >= 0 ? "+" : "−"}${money(Math.abs(res.profit))}`));
+}
+
+function renderEnd(p) {
+  const userEnd = p?.end_kind === "user";
+  const monthNow = p?.month_now ?? p?.month ?? 0;
+  const total = p?.months_total || 0;
+  const left = p?.left ?? Math.max(0, total - monthNow);
+
+  $("#pTitle").textContent = userEnd ? "这一局由你结束了" : "这一局结束了";
+  $("#pSub").textContent = p?.end_reason || "";
+  $("#stats").innerHTML = p?.state ? `
+    <div class="stat"><div class="k">已结算</div><div class="v">${monthNow} / ${total} 个月</div></div>
+    <div class="stat"><div class="k">账上现金</div><div class="v">${money(p.state.cash)}</div></div>
+    <div class="stat"><div class="k">净现金（扣预收）</div><div class="v">${money(p.state.net)}</div></div>
+    <div class="stat"><div class="k">净资产（含资产）</div><div class="v">${money(p.state.net_worth ?? p.state.net)}</div></div>
+    <div class="stat"><div class="k">总投入 / 退出可回收</div><div class="v">${money(p.state.capital ?? 0)} / ${money(p.state.salvage ?? 0)}</div></div>
+    <div class="stat"><div class="k">上月净利</div><div class="v" style="color:${p.state.profit < 0 ? "var(--danger)" : "var(--good)"}">${(p.state.profit >= 0 ? "+" : "−") + money(Math.abs(p.state.profit))}</div></div>
+    <div class="stat"><div class="k">产能利用</div><div class="v">${Math.round(p.state.util * 100)}%</div></div>
+    <div class="stat"><div class="k">没跑完</div><div class="v">${left} 个月</div></div>` : "";
+
+  $("#trigs").innerHTML = `<div class="trig"><b>${p?.end_reason || "已结束"}</b></div>`
+    + (userEnd ? `<div class="muted" style="font-size:13px;margin-top:8px">
+        账停在这里，没有做资产清算。下面两份东西现在就能出：评估报告（盈利率 / 最管用的三手 / 风险 / 该不该继续投）和反事实审计（你哪一手真起作用）。</div>` : "");
+
+  $("#menuHead").textContent = "下一步";
+  $("#slotPill").textContent = "";
+  $("#trigHead").textContent = userEnd ? "停在这里" : "终局";
+  const acts = $("#acts");
+  acts.innerHTML = `
+    <button id="endReport" class="primary">看评估报告</button>
+    <button id="endAudit">看反事实审计</button>
+    ${userEnd ? '<button id="endResume">继续这一局</button>' : ""}`;
+  acts.style.gridTemplateColumns = "repeat(auto-fit,minmax(160px,1fr))";
+  $("#endReport").onclick = () => runJob("report");
+  $("#endAudit").onclick = () => runJob("audit");
+  if (userEnd) $("#endResume").onclick = doResume;
+
+  ["#btnGo", "#btnWait", "#btnEnd"].forEach(s => $(s).classList.add("hide"));
+}
+
+/* ───────── 账本图 ───────── */
+let LEDGER = null;
+function drawChart(data) {
+  LEDGER = data;
+  const c = $("#chart"), box = c.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const W = box.clientWidth, H = box.clientHeight;
+  c.width = W * dpr; c.height = H * dpr;
+  const g = c.getContext("2d"); g.scale(dpr, dpr);
+  g.clearRect(0, 0, W, H);
+
+  const rows = data.ledger.filter(r => r.month <= Math.max(1, data.ledger.filter(x => x.month <= (POINT?.month_now || 0) + 1).length ? (POINT?.month_now || 0) + 1 : 1));
+  if (!rows.length) return;
+  const cur = POINT?.month_now ?? data.ledger.length;
+  const vis = data.ledger.slice(0, Math.max(1, cur + 1));
+
+  const pad = { l: 52, r: 12, t: 12, b: 22 };
+  const xs = i => pad.l + (W - pad.l - pad.r) * (vis.length === 1 ? 0.5 : i / (vis.length - 1));
+  const vals = vis.flatMap(r => [r.cash, r.net]);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi === lo) { hi = lo + 1; }
+  const span = hi - lo; lo -= span * 0.1; hi += span * 0.1;
+  const ys = v => pad.t + (H - pad.t - pad.b) * (1 - (v - lo) / (hi - lo));
+
+  // 网格
+  g.strokeStyle = "#eef0f3"; g.lineWidth = 1; g.font = "11px -apple-system,sans-serif";
+  g.fillStyle = "#9aa1ab"; g.textAlign = "right"; g.textBaseline = "middle";
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + (hi - lo) * k / 4, y = ys(v);
+    g.beginPath(); g.moveTo(pad.l, y); g.lineTo(W - pad.r, y); g.stroke();
+    g.fillText((v / 10000).toFixed(0) + "万", pad.l - 8, y);
+  }
+  const line = (key, color, dash) => {
+    g.beginPath(); g.setLineDash(dash || []);
+    g.strokeStyle = color; g.lineWidth = 2; g.lineJoin = "round";
+    vis.forEach((r, i) => i ? g.lineTo(xs(i), ys(r[key])) : g.moveTo(xs(i), ys(r[key])));
+    g.stroke(); g.setLineDash([]);
+  };
+  line("net", "#5b5bd6", [4, 4]);
+  line("cash", "#0f766e");
+
+  // 零点线
+  if (lo < 0 && hi > 0) {
+    g.beginPath(); g.strokeStyle = "#d8b4b4"; g.setLineDash([2, 3]);
+    g.moveTo(pad.l, ys(0)); g.lineTo(W - pad.r, ys(0)); g.stroke(); g.setLineDash([]);
+  }
+  // 事件竖线
+  (data.events || []).forEach(e => {
+    const i = vis.findIndex(r => r.month === e.at);
+    if (i < 0) return;
+    g.beginPath(); g.strokeStyle = e.delta < 0 ? "#e8c4c0" : "#c7ddd2"; g.lineWidth = 1;
+    g.moveTo(xs(i), pad.t); g.lineTo(xs(i), H - pad.b); g.stroke();
+  });
+  // x 轴
+  g.fillStyle = "#9aa1ab"; g.textAlign = "center"; g.textBaseline = "top";
+  vis.forEach((r, i) => { if (i % Math.ceil(vis.length / 8) === 0) g.fillText("月" + r.month, xs(i), H - pad.b + 5); });
+  // 末点
+  const last = vis[vis.length - 1];
+  g.beginPath(); g.fillStyle = "#0f766e"; g.arc(xs(vis.length - 1), ys(last.cash), 3.2, 0, 7); g.fill();
+
+  const evbox = $("#events");
+  const fut = (data.events || []).filter(e => e.at > cur).slice(0, 4);
+  evbox.innerHTML = (data.events || []).length
+    ? "环境事件：" + (data.events || []).map(e => `月${e.at} ${e.name}`).join("　") : "";
+}
+
+window.addEventListener("resize", () => { if (LEDGER) drawChart(LEDGER); });
+
+/* ───────── 报告 / 审计 ───────── */
+async function runJob(kind) {
+  if (!SID) return;
+  show("view-doc");
+  $("#docBody").innerHTML = `<div class="muted"><span class="loading"></span>${kind === "report" ? "正在跑 12 个动作 × 120 条路径 × 2 种情形，约 40 秒…" : "正在做 leave-one-out 反事实…"}</div>`;
+  $("#docMsg").textContent = "";
+  try {
+    const { job } = await api("/api/job/" + kind, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sid: SID })
+    });
+    for (let i = 0; i < 300; i++) {
+      await new Promise(r => setTimeout(r, 900));
+      const j = await api("/api/job/" + job);
+      if (j.status === "done") {
+        if (kind === "report") $("#docBody").innerHTML = md(j.result.markdown);
+        else $("#docBody").innerHTML = md(auditMd(j.result));
+        return;
+      }
+      if (j.status === "error") throw new Error(j.error);
+    }
+    throw new Error("超时");
+  } catch (e) {
+    $("#docBody").innerHTML = `<div class="warnbox">失败：${e.message}</div>`;
+  }
+}
+function auditMd(a) {
+  const L = [];
+  L.push("## 反事实审计\n");
+  L.push(`- 起点净现金：${money(a.start_net)}`);
+  L.push(`- 什么都不做：${money(a.base)}`);
+  L.push(`- 你这一路：**${money(a.full)}**`);
+  L.push(`- 你的决策值：**${(a.delta >= 0 ? "+" : "−") + money(Math.abs(a.delta)).replace("¥", "¥")}**\n`);
+  L.push("| 月 | 决策 | 结果 | 单独拿掉会怎样 |");
+  L.push("|---|---|---|---|");
+  [...a.rows].sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta)).forEach(r => {
+    L.push(`| ${r.at} | ${r.name} | ${r.failed ? "失败" : "成了"} | ${(r.delta >= 0 ? "+" : "−") + money(Math.abs(r.delta))} |`);
+  });
+  L.push("\n> 这些数加起来不等于总差额——决策之间会互相影响。**决策不可加**，这是它和成本项最大的区别。");
+  return L.join("\n");
+}
+$("#btnReport").onclick = () => runJob("report");
+$("#btnAudit").onclick = () => runJob("audit");
+$("#btnBack").onclick = () => { if (SID) enter(SID); else show("view-new"); };
+
+boot().then(() => {
+  const h = location.hash.match(/sid=([^&]+)/);
+  if (h) enter(decodeURIComponent(h[1]));
+}).catch(e => { document.body.innerHTML = `<pre style="padding:24px;color:#b42318">启动失败：${e.message}</pre>`; });
+</script>
+</body>
+</html>

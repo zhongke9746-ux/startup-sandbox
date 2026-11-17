@@ -1,0 +1,1298 @@
+{
+  "meta": {
+    "pack_id": "actions",
+    "name": "通用经营动作库",
+    "version": "0.3.0",
+    "updated_at": "2026-11-16",
+    "changelog": [
+      "0.1.0 | 2026-11-16 | 初版 18 个动作，五族；补 GAP-01",
+      "0.2.0 | 2026-11-16 | 跨行业校验（咖啡/健身/中餐）后修订：新增 A-FIN-03 预收储值；A-COST-02 引入 share_of_fixed；A-PRICE-01/02 引入 elasticity_guard；A-COST-01/03 引入 key_person_dependency 与 quality_visibility；A-CAP-01 引入 capacity_gated；one_time 明确为现金流出",
+      "0.3.0 | 2026-11-16 | 交互式会话暴露「重复点同一动作」漏洞：新增 repeat_decay，收益递减、代价照付。单次路径不受影响（decay^0 = 1）",
+      "0.2.1 | 2026-11-16 | 成功率校准（GAP-MC-04）：按 gate_type 重新分类，删除 6 个伪概率（A-PRICE-01/02、A-CAP-01 属 none；A-RISK-01、A-STR-01、A-CAP-02 属 execution），p 一律置 1.0。详见 _calibration.yaml"
+    ],
+    "symmetry": "动作打 slot，机理也打 slot；引擎结算逻辑完全一致，区别只在'谁发起'",
+    "validation": "已在 3 个成本结构完全不同的行业跑通：见 06-动作库跨行业校验.md"
+  },
+  "action_schema": {
+    "fields": {
+      "id": "A-族-序号",
+      "name": "动作名",
+      "family": "pricing | cost | growth | capacity | finance | risk | strategy",
+      "intent": "这个动作在解决什么问题（供 Agent 判断适用性）",
+      "params": "可调幅度与典型档位",
+      "requires": "前置条件（现金、规模、资质）",
+      "needs_baseline": "结算需要行业包提供哪些参数（缺字段则该动作只能粗算）",
+      "effects": "打到哪些槽位，方向与量级",
+      "cost": {
+        "one_time_cash_out": "一次性现金流出，单位元（v0.2 明确：这是付出，不是收入）",
+        "recurring": "持续性支出",
+        "implicit": "隐性代价"
+      },
+      "delay_months": "生效延迟",
+      "success_probability": "动作本身能否成功（不是效果大小）",
+      "gate_type": "none | execution | negotiation | market —— 见 _calibration.yaml。 只有 negotiation / market 才有真门；none 表示不确定性已在 effects 里建模， 再给 p 就是双重计数",
+      "risk": "副作用（这是动作库最容易被写漏的部分）",
+      "reversibility": "high | medium | low（可逆性决定试错空间）",
+      "cooldown_months": "多久能再做一次",
+      "conflicts": "与哪些动作互斥",
+      "tradeoff": "一句人话，供 Agent 权衡"
+    },
+    "guards": {
+      "share_of_fixed": "降某项固定成本时，该项在 fixed_cost 中的占比。缺省不得为 1（会把'降房租'算成'降全部固定成本'）",
+      "elasticity_guard": "价格类动作的方向守卫。当 price_elasticity >= 1 时，提价与降价换量均为负杠杆，应拒绝或标注警告",
+      "capacity_gated": "扩产类动作的产出守卫。只有产能已接近上限时，新增产能才转化为成交；否则只是增加成本",
+      "dependency_field": "标注该动作依赖哪个结构性字段（key_person_dependency / quality_visibility / prepaid_ratio），缺字段即降级为粗算"
+    }
+  },
+  "repeat_decay": {
+    "A-PRICE-01": {
+      "decay": 0.45,
+      "benefit": [
+        "price"
+      ],
+      "note": "第二次提价掉的是价格敏感客，第三次掉的是所有还没走的人"
+    },
+    "A-PRICE-02": {
+      "decay": 0.5,
+      "benefit": [
+        "volume"
+      ],
+      "note": "促销的量效会衰减，但价格锚点一次比一次低"
+    },
+    "A-COST-02": {
+      "decay": 0.5,
+      "benefit": [
+        "fixed_cost"
+      ],
+      "note": "房东只让一次步"
+    },
+    "A-COST-03": {
+      "decay": 0.6,
+      "benefit": [
+        "unit_cost"
+      ],
+      "note": "可替换的供应商是有限的"
+    },
+    "A-COST-04": {
+      "decay": 0.4,
+      "benefit": [
+        "fixed_cost",
+        "var_rate"
+      ],
+      "note": "第二次砍的就不是'非核心'了"
+    },
+    "A-GROW-01": {
+      "decay": 0.7,
+      "benefit": [
+        "volume"
+      ],
+      "note": "同一批人打两次广告，第二次转化率腰斩"
+    },
+    "A-GROW-02": {
+      "decay": 0.5,
+      "benefit": [
+        "volume"
+      ],
+      "note": "渠道有数量上限，且每个新渠道的边际客流递减"
+    },
+    "A-GROW-03": {
+      "decay": 0.65,
+      "benefit": [
+        "price",
+        "volume"
+      ],
+      "note": "新品的新鲜感会衰减"
+    },
+    "A-FIN-03": {
+      "decay": 0.5,
+      "benefit": [
+        "cash_once"
+      ],
+      "note": "储值卖过一轮，能再卖的人少了一半"
+    },
+    "A-CAP-01": {
+      "decay": 0.7,
+      "benefit": [
+        "capacity",
+        "volume_gated"
+      ],
+      "note": "物理空间是硬上限"
+    }
+  },
+  "bandwidth": {
+    "monthly_action_slots": 2,
+    "heavy_action_slots": 3,
+    "rationale": "真实经营者的瓶颈是注意力，不是想法。没有这个约束，模拟会退化成'每月全开'的幻想",
+    "heavy_actions": [
+      "A-FIN-01",
+      "A-STR-01",
+      "A-STR-02",
+      "A-CAP-01"
+    ]
+  },
+  "settlement": {
+    "effect": "slot_t = slot_base × (1 + delta × intensity)  或  slot_t = slot_base + amount × intensity",
+    "success_roll": "先按 success_probability 判定动作是否成立；失败则只承担 cost 的一半，effects 不生效",
+    "failure_note": "失败也要付代价——谈判失败有时间成本，招聘失败有面试成本"
+  },
+  "actions": [
+    {
+      "id": "A-PRICE-01",
+      "name": "提价",
+      "family": "pricing",
+      "intent": "毛利太薄、成本上涨需要转嫁、品牌有溢价空间",
+      "params": {
+        "price_delta": [
+          0.05,
+          0.15
+        ],
+        "volume_loss": "baseline.price_elasticity × price_delta（弹性越高，掉量越多）"
+      },
+      "needs_baseline": [
+        "price_elasticity"
+      ],
+      "elasticity_guard": "price_elasticity >= 1.0 时本动作是负杠杆（涨 1% 掉量 >1%，收入净减），引擎应拒绝并提示；自助健身房（e=1.10）属此类",
+      "requires": {
+        "cash_min": 0
+      },
+      "effects": [
+        {
+          "slot": "price",
+          "op": "mul",
+          "delta": "+price_delta",
+          "delay": 0
+        },
+        {
+          "slot": "volume",
+          "op": "mul",
+          "delta": "-volume_loss",
+          "delay": 1,
+          "profile": "ramp",
+          "ramp_months": 2
+        }
+      ],
+      "cost": {
+        "one_time": 0,
+        "implicit": [
+          "价签更换",
+          "老客流失"
+        ]
+      },
+      "delay_months": 0,
+      "success_probability": 1.0,
+      "risk": [
+        {
+          "effect": "churn ↑ 10%~25%",
+          "note": "价格敏感客群先走"
+        },
+        {
+          "effect": "口碑/评分短期下降",
+          "note": "若提价同时降质，长期不可逆"
+        }
+      ],
+      "reversibility": "high",
+      "cooldown_months": 3,
+      "conflicts": [
+        "A-PRICE-02"
+      ],
+      "tradeoff": "提价救毛利但伤量；安全边际 < 10% 时提价往往比降本更有效，因为不用破坏组织"
+    },
+    {
+      "id": "A-PRICE-02",
+      "name": "促销/降价换量",
+      "family": "pricing",
+      "intent": "产能空闲、需要现金流、要抢新客",
+      "params": {
+        "price_delta": [
+          -0.2,
+          -0.1
+        ],
+        "volume_gain": "min(price_elasticity × |price_delta| × 1.5, 0.40)"
+      },
+      "needs_baseline": [
+        "price_elasticity"
+      ],
+      "elasticity_guard": "price_elasticity >= 1.0 时'降价换量'同样不划算：量涨 1.5e 但单价降 1，毛利被吃光；此时应改用 A-GROW-03 提客单，而非降价",
+      "requires": {
+        "cash_min": 0,
+        "unit_economics_ok": "毛利 > 30%"
+      },
+      "effects": [
+        {
+          "slot": "price",
+          "op": "mul",
+          "delta": "-|price_delta|",
+          "delay": 0
+        },
+        {
+          "slot": "volume",
+          "op": "mul",
+          "delta": "+volume_gain",
+          "delay": 0,
+          "profile": "ramp",
+          "ramp_months": 1
+        }
+      ],
+      "cost": {
+        "implicit": [
+          "毛利被压低",
+          "价格锚定效应"
+        ]
+      },
+      "delay_months": 0,
+      "success_probability": 1.0,
+      "risk": [
+        {
+          "effect": "促销结束后 volume 回落到低于促销前 5%~15%",
+          "delay": 2,
+          "note": "需求被提前透支"
+        },
+        {
+          "effect": "培养等待折扣的客群",
+          "note": "重复促销后 elasticity 上升"
+        }
+      ],
+      "reversibility": "medium",
+      "cooldown_months": 3,
+      "conflicts": [
+        "A-PRICE-01"
+      ],
+      "tradeoff": "现金流紧张时的止血动作，但每次促销都在教育客户'等一等更便宜'"
+    },
+    {
+      "id": "A-COST-01",
+      "name": "裁员/缩编",
+      "family": "cost",
+      "intent": "现金跑道告急、人效过低、业务收缩",
+      "params": {
+        "cut_ratio": [
+          0.1,
+          0.3
+        ]
+      },
+      "requires": {
+        "headcount_share > 0": true
+      },
+      "needs_baseline": [
+        "labor_cost_share",
+        "key_person_dependency",
+        "labor_rigidity"
+      ],
+      "dependency_field": "key_person_dependency",
+      "effects": [
+        {
+          "slot": "fixed_cost",
+          "op": "mul",
+          "delta": "-cut_ratio × labor_share",
+          "delay": 1
+        },
+        {
+          "slot": "capacity",
+          "op": "mul",
+          "delta": "-cut_ratio × 0.7",
+          "delay": 1
+        },
+        {
+          "slot": "revenue",
+          "op": "mul",
+          "delta": "-cut_ratio × 0.3",
+          "delay": 2,
+          "note": "交付/服务能力下降的传导"
+        },
+        {
+          "slot": "volume",
+          "op": "mul",
+          "delta": "-cut_ratio × key_person_dependency",
+          "delay": 1,
+          "duration": 6,
+          "recover": 4,
+          "note": "v0.2 新增：关键人依赖造成的品质断档，与'少一个人'是两回事"
+        }
+      ],
+      "cost": {
+        "one_time_cash_out": "月薪 × cut 人数 × 1.5（补偿）",
+        "implicit": [
+          "士气 -15~-30",
+          "关键人流失概率 +25%"
+        ]
+      },
+      "delay_months": 1,
+      "success_probability": 1.0,
+      "risk": [
+        {
+          "effect": "morale ↓ 15~30",
+          "note": "留下的核心人员开始找机会"
+        },
+        {
+          "effect": "tech_debt ↑ 10~20",
+          "note": "维护人手不足"
+        }
+      ],
+      "reversibility": "low",
+      "cooldown_months": 6,
+      "tradeoff": "最快见效的降本手段，也是最伤组织信任的手段；先降固定成本结构（租约/外包），再动人",
+      "validation_note": "校验结果：中餐店（key_person_dependency=0.75）裁 15% 净现金 -63,161；不建模该字段会误判为 +54,535 的'好动作'"
+    },
+    {
+      "id": "A-COST-02",
+      "name": "重谈固定成本（租约/长约/订阅）",
+      "family": "cost",
+      "intent": "固定成本占比过高、行业下行、有谈判筹码",
+      "params": {
+        "reduction": [
+          0.05,
+          0.2
+        ],
+        "leverage": "baseline 空置率 / 替换成本（筹码越强成功率越高）"
+      },
+      "requires": {
+        "租约或合约剩余期 >= 6 个月": true
+      },
+      "needs_baseline": [
+        "rent_cost_share"
+      ],
+      "share_of_fixed": "只有房租那部分能降，故实际降本 = fixed_cost × reduction × (rent_cost_share × 收入 / fixed_cost)",
+      "effects": [
+        {
+          "slot": "fixed_cost",
+          "op": "mul",
+          "delta": "-reduction × share_of_fixed",
+          "delay": 1,
+          "profile": "step"
+        }
+      ],
+      "cost": {
+        "one_time_cash_out": "0 ~ 1 个月房租（违约金/中介/法务）",
+        "implicit": [
+          "与房东/供应商关系损耗"
+        ]
+      },
+      "delay_months": 1,
+      "success_probability": 0.5,
+      "risk": [
+        {
+          "effect": "谈判失败时承担时间成本，且暴露经营困难信号"
+        },
+        {
+          "effect": "换租约可能换来更短期限，未来被涨租"
+        }
+      ],
+      "reversibility": "medium",
+      "cooldown_months": 12,
+      "tradeoff": "降 10% 房租等于永久每月省一笔，且不伤团队；但只在有筹码时有效",
+      "validation_note": "v0.2 修正：v0.1 把 reduction 直接打在 fixed_cost 全量上，实测高估 2.2~2.9 倍（房租只占固定成本 34%~45%）"
+    },
+    {
+      "id": "A-COST-03",
+      "name": "换供应商/降规格",
+      "family": "cost",
+      "intent": "单位成本过高、单一供应商依赖",
+      "params": {
+        "unit_cost_delta": [
+          -0.15,
+          -0.05
+        ],
+        "quality_delta": [
+          -0.08,
+          0.0
+        ]
+      },
+      "requires": {
+        "存在可替换供应商": true
+      },
+      "needs_baseline": [
+        "material_cost_share",
+        "quality_visibility"
+      ],
+      "dependency_field": "quality_visibility",
+      "effects": [
+        {
+          "slot": "unit_cost",
+          "op": "mul",
+          "delta": "-|unit_cost_delta|",
+          "delay": 1
+        },
+        {
+          "slot": "capacity",
+          "op": "mul",
+          "delta": "-0.10",
+          "delay": 1,
+          "profile": "pulse",
+          "note": "切换期断供"
+        },
+        {
+          "slot": "volume",
+          "op": "mul",
+          "delta": "-|quality_delta| × quality_visibility × 2",
+          "delay": 2,
+          "duration": 8,
+          "recover": 5,
+          "note": "v0.2 新增：客户能尝/试出差别时，降本会变成掉量"
+        }
+      ],
+      "cost": {
+        "one_time_cash_out": "1 个月采购量（试单+认证）",
+        "implicit": [
+          "品质波动",
+          "磨合期"
+        ]
+      },
+      "delay_months": 1,
+      "success_probability": 0.75,
+      "risk": [
+        {
+          "effect": "品质下降 → reputation ↓ 5~15（若客户可感知）"
+        },
+        {
+          "effect": "新供应商稳定性未知，断供概率 +10%"
+        }
+      ],
+      "reversibility": "medium",
+      "cooldown_months": 6,
+      "tradeoff": "省的是成本，赌的是品质；客户感知不到采购变化时是纯赚，感知得到时是慢性自杀",
+      "validation_note": "校验结果：中餐店（quality_visibility=0.85）换供应商净现金 -13,465；咖啡店（0.55）同样动作 +26,283。同一动作在两个行业符号相反，取决于'客人吃不吃得出来'"
+    },
+    {
+      "id": "A-COST-04",
+      "name": "削减非核心支出（营销/福利/研发）",
+      "family": "cost",
+      "intent": "需要立刻改善利润表、保住现金",
+      "params": {
+        "cut_ratio": [
+          0.1,
+          0.4
+        ]
+      },
+      "requires": {
+        "cash_min": 0
+      },
+      "effects": [
+        {
+          "slot": "fixed_cost",
+          "op": "mul",
+          "delta": "-cut_ratio × 可削项占比",
+          "delay": 0
+        },
+        {
+          "slot": "variable_cost",
+          "op": "mul",
+          "delta": "-cut_ratio × 0.5",
+          "delay": 0
+        },
+        {
+          "slot": "volume",
+          "op": "mul",
+          "delta": "-cut_ratio × 0.3",
+          "delay": 2,
+          "note": "营销削减的滞后反应"
+        }
+      ],
+      "cost": {
+        "one_time": 0,
+        "implicit": [
+          "tech_debt ↑",
+          "品牌声量下降"
+        ]
+      },
+      "delay_months": 0,
+      "success_probability": 1.0,
+      "risk": [
+        {
+          "effect": "tech_debt ↑ 10~25"
+        },
+        {
+          "effect": "未来增长基数被削弱（这是'省钱伤未来'型动作）"
+        }
+      ],
+      "reversibility": "high",
+      "cooldown_months": 3,
+      "tradeoff": "最快、最无痛的止血，但止痛不治病；连续两个季度这么做，基本等于放弃增长"
+    },
+    {
+      "id": "A-GROW-01",
+      "name": "加大获客投入",
+      "family": "growth",
+      "intent": "产品验证过了、单位经济为正、有现金",
+      "params": {
+        "spend_multiple": [
+          1.5,
+          3.0
+        ],
+        "marginal_decay": 0.6
+      },
+      "requires": {
+        "cash_min": "3 个月 burn",
+        "ltv / cac >= 1.5": true
+      },
+      "effects": [
+        {
+          "slot": "variable_cost",
+          "op": "mul",
+          "delta": "+spend_multiple - 1",
+          "delay": 0
+        },
+        {
+          "slot": "volume",
+          "op": "mul",
+          "delta": "+(spend_multiple-1) × marginal_decay × 0.3",
+          "delay": 1,
+          "profile": "ramp",
+          "ramp_months": 2
+        }
+      ],
+      "cost": {
+        "one_time": 0,
+        "recurring": "获客预算增量"
+      },
+      "delay_months": 1,
+      "success_probability": 0.8,
+      "risk": [
+        {
+          "effect": "单位经济恶化：cac 上升会让 ltv/cac 从 3 掉到 2 以下"
+        }
+      ],
+      "reversibility": "high",
+      "cooldown_months": 1,
+      "tradeoff": "只在单位经济为正时才成立；单位经济为负时加大投放等于加速死亡"
+    },
+    {
+      "id": "A-GROW-02",
+      "name": "开新渠道（外卖/线上/新市场）",
+      "family": "growth",
+      "intent": "现有渠道天花板、需要增量但不想加固定成本",
+      "params": {
+        "volume_gain": [
+          0.1,
+          0.3
+        ],
+        "channel_fee": [
+          0.15,
+          0.25
+        ]
+      },
+      "requires": {
+        "cash_min": "1 个月 burn",
+        "有可复用供给能力": true
+      },
+      "effects": [
+        {
+          "slot": "volume",
+          "op": "mul",
+          "delta": "+volume_gain",
+          "delay": 2,
+          "profile": "ramp",
+          "ramp_months": 3
+        },
+        {
+          "slot": "variable_cost",
+          "op": "mul",
+          "delta": "+channel_fee × volume_gain",
+          "delay": 2
+        },
+        {
+          "slot": "unit_cost",
+          "op": "mul",
+          "delta": "+0.05 ~ +0.12（包装/履约）",
+          "delay": 2
+        }
+      ],
+      "cost": {
+        "one_time": "0.3~1 个月营收（渠道搭建/保证金/物料）",
+        "implicit": [
+          "渠道依赖度上升"
+        ]
+      },
+      "delay_months": 2,
+      "success_probability": 0.7,
+      "risk": [
+        {
+          "effect": "channel_concentration 上升 → 未来被平台掐脖子（对照 M-COST-04 / M-REV-03）"
+        },
+        {
+          "effect": "新渠道抢占堂食产能，品质下降"
+        }
+      ],
+      "reversibility": "medium",
+      "cooldown_months": 6,
+      "tradeoff": "增量最快但要交'过路费'；渠道越成功，未来议价权越低"
+    },
+    {
+      "id": "A-GROW-03",
+      "name": "推新品/新 SKU",
+      "family": "growth",
+      "intent": "客单上不去、客户疲劳、需要差异化",
+      "params": {
+        "ticket_gain": [
+          0.03,
+          0.12
+        ],
+        "volume_gain": [
+          0.0,
+          0.1
+        ]
+      },
+      "requires": {
+        "cash_min": "0.5 个月 burn"
+      },
+      "effects": [
+        {
+          "slot": "price",
+          "op": "mul",
+          "delta": "+ticket_gain",
+          "delay": 1
+        },
+        {
+          "slot": "volume",
+          "op": "mul",
+          "delta": "+volume_gain",
+          "delay": 2,
+          "profile": "ramp",
+          "ramp_months": 2
+        }
+      ],
+      "cost": {
+        "one_time": "研发/打样/首批物料（0.2~1 个月营收）",
+        "implicit": [
+          "SKU 复杂度上升 → unit_cost 微升"
+        ]
+      },
+      "delay_months": 1,
+      "success_probability": 0.5,
+      "risk": [
+        {
+          "effect": "失败时物料成为沉没成本，且分散了注意力带宽"
+        },
+        {
+          "effect": "SKU 过多导致 unit_cost ↑ 3%~8%"
+        }
+      ],
+      "reversibility": "medium",
+      "cooldown_months": 3,
+      "tradeoff": "新品的成功率通常只有一半，但它是对抗价格战最实在的武器——不降价也能提客单"
+    },
+    {
+      "id": "A-GROW-04",
+      "name": "会员/复购机制",
+      "family": "growth",
+      "intent": "流失率高、复购低、获客成本贵",
+      "params": {
+        "churn_reduction": [
+          0.1,
+          0.3
+        ],
+        "margin_give_up": [
+          0.02,
+          0.06
+        ]
+      },
+      "requires": {
+        "cash_min": "0.5 个月 burn"
+      },
+      "effects": [
+        {
+          "slot": "churn",
+          "op": "mul",
+          "delta": "-churn_reduction",
+          "delay": 2
+        },
+        {
+          "slot": "price",
+          "op": "mul",
+          "delta": "-margin_give_up",
+          "delay": 1,
+          "note": "让利换复购"
+        }
+      ],
+      "cost": {
+        "one_time": "系统/设计/物料",
+        "recurring": "让利成本"
+      },
+      "delay_months": 2,
+      "success_probability": 0.65,
+      "risk": [
+        {
+          "effect": "让利后若复购未提升，等于纯亏毛利"
+        }
+      ],
+      "reversibility": "medium",
+      "cooldown_months": 6,
+      "tradeoff": "在获客贵的市场里，让老客多来一次比拉一个新客便宜；但需要 2 个月才见效，救不了急"
+    },
+    {
+      "id": "A-CAP-01",
+      "name": "扩产/加人/加设备",
+      "family": "capacity",
+      "intent": "需求超过供给、出现排队或流失",
+      "params": {
+        "capacity_gain": [
+          0.2,
+          0.6
+        ]
+      },
+      "requires": {
+        "cash_min": "capex + 3 个月增量固定成本",
+        "capacity_utilization > 0.85": true
+      },
+      "needs_baseline": [
+        "capacity_ceiling"
+      ],
+      "capacity_gated": "新增产能只在产能已饱和时转化为成交；月均利用率低于 85% 时，本动作是纯成本",
+      "effects": [
+        {
+          "slot": "capacity",
+          "op": "mul",
+          "delta": "+capacity_gain",
+          "delay": 2
+        },
+        {
+          "slot": "fixed_cost",
+          "op": "mul",
+          "delta": "+capacity_gain × 0.6",
+          "delay": 2
+        },
+        {
+          "slot": "volume_gated",
+          "op": "mul",
+          "delta": "+capacity_gain × 0.5",
+          "delay": 3,
+          "profile": "ramp",
+          "ramp_months": 2,
+          "note": "v0.2 修正：v0.1 直接加 volume，等于假设'产能即需求'"
+        }
+      ],
+      "cost": {
+        "one_time_cash_out": "设备/装修（0.5~3 个月营收）",
+        "recurring": "增量固定成本"
+      },
+      "delay_months": 2,
+      "success_probability": 1.0,
+      "risk": [
+        {
+          "effect": "需求不及预期时，固定成本变成包袱（这是单店最常见的死法）"
+        },
+        {
+          "effect": "扩张期品质波动 → reputation ↓"
+        }
+      ],
+      "reversibility": "low",
+      "cooldown_months": 12,
+      "tradeoff": "产能是重决策：加错了要很久才能退回来。利用率没到 85% 就别扩",
+      "validation_note": "校验结果：三行业月均利用率 64%~69%，扩产全部为大额负贡献（-15.8 万 ~ -26.5 万）；即便客流 +40% 使其饱和，面积天花板仍让扩产不划算"
+    },
+    {
+      "id": "A-CAP-02",
+      "name": "收缩产能（关店/退租/减班）",
+      "family": "capacity",
+      "intent": "长期亏损、需求结构性下降",
+      "params": {
+        "capacity_cut": [
+          0.2,
+          0.5
+        ]
+      },
+      "requires": {
+        "cash_min": 0
+      },
+      "effects": [
+        {
+          "slot": "fixed_cost",
+          "op": "mul",
+          "delta": "-capacity_cut × 0.8",
+          "delay": 1
+        },
+        {
+          "slot": "volume",
+          "op": "mul",
+          "delta": "-capacity_cut × 0.3",
+          "delay": 1
+        }
+      ],
+      "cost": {
+        "one_time": "违约金 + 遣散（0.5~2 个月固定成本）"
+      },
+      "delay_months": 1,
+      "success_probability": 1.0,
+      "risk": [
+        {
+          "effect": "收缩信号影响客户与团队信心"
+        }
+      ],
+      "reversibility": "low",
+      "cooldown_months": 12,
+      "tradeoff": "承认失败的动作，但比拖到现金归零体面得多；残值越早处理越高"
+    },
+    {
+      "id": "A-FIN-01",
+      "name": "融资",
+      "family": "finance",
+      "intent": "增长需要弹药、跑道不足",
+      "params": {
+        "amount_months": [
+          6,
+          18
+        ],
+        "dilution": [
+          0.1,
+          0.25
+        ]
+      },
+      "requires": {
+        "runway_months >= 3": true,
+        "近 6 个月有正增长或明确指标": true
+      },
+      "effects": [
+        {
+          "slot": "cash",
+          "op": "add",
+          "amount": "amount_months × burn",
+          "delay": 4
+        },
+        {
+          "slot": "valuation",
+          "op": "mul",
+          "delta": "+0.0（本轮不改变估值，只确认）",
+          "delay": 4
+        }
+      ],
+      "cost": {
+        "one_time": "融资费用 3%~5% 融资额",
+        "implicit": [
+          "管理层 3~6 个月精力被占用（带宽 -2）"
+        ]
+      },
+      "delay_months": 4,
+      "success_probability": 0.35,
+      "risk": [
+        {
+          "effect": "失败时浪费 3~6 个月，同期经营动作停滞"
+        },
+        {
+          "effect": "融资环境收紧时成功率再乘 0.5~0.7（见 M-CAP-01）"
+        }
+      ],
+      "reversibility": "low",
+      "cooldown_months": 6,
+      "conflicts": [
+
+      ],
+      "tradeoff": "最贵的钱是'来不及'的钱；跑道 < 3 个月才启动融资，基本已经输了一半"
+    },
+    {
+      "id": "A-FIN-02",
+      "name": "借贷/账期谈判/供应链金融",
+      "family": "finance",
+      "intent": "短期现金缺口、不想稀释股权",
+      "params": {
+        "amount_months": [
+          1,
+          6
+        ],
+        "interest": [
+          0.06,
+          0.18
+        ]
+      },
+      "requires": {
+        "有可抵押资产或稳定流水": true
+      },
+      "effects": [
+        {
+          "slot": "cash",
+          "op": "add",
+          "amount": "amount_months × monthly_cost",
+          "delay": 1
+        },
+        {
+          "slot": "fixed_cost",
+          "op": "mul",
+          "delta": "+interest / 12 × amount_months",
+          "delay": 1
+        }
+      ],
+      "cost": {
+        "implicit": [
+          "财务费用",
+          "现金流刚性上升"
+        ]
+      },
+      "delay_months": 1,
+      "success_probability": 0.6,
+      "risk": [
+        {
+          "effect": "固定成本刚性上升，抗风险能力下降"
+        }
+      ],
+      "reversibility": "medium",
+      "cooldown_months": 6,
+      "tradeoff": "不稀释股权，但把'活不下去'从可能变成确定——只是延后",
+      "validation_note": "与 A-FIN-03 的区别：借贷是'有息负债'，预收是'无息负债 + 履约义务'。前者只需还钱，后者还不上要担责"
+    },
+    {
+      "id": "A-FIN-03",
+      "name": "预售/储值/年卡预收（卖未来）",
+      "family": "finance",
+      "intent": "现金流紧张、需要一次性拿到钱、但成交量不足以支撑正常客单",
+      "params": {
+        "amount_months": [
+          0.5,
+          2.5
+        ],
+        "discount": [
+          0.1,
+          0.35
+        ],
+        "amort_months": [
+          6,
+          12
+        ]
+      },
+      "requires": {
+        "可合法收取预付款（需备案的行业须备案）": true
+      },
+      "needs_baseline": [
+        "prepaid_ratio"
+      ],
+      "dependency_field": "prepaid_ratio",
+      "effects": [
+        {
+          "slot": "cash",
+          "op": "add",
+          "amount": "amount_months × burn",
+          "delay": 0,
+          "note": "现金立刻到账"
+        },
+        {
+          "slot": "liability",
+          "op": "add",
+          "amount": "同额，delay: 0",
+          "note": "与此同时等额增加履约负债，净资产不变"
+        },
+        {
+          "slot": "price",
+          "op": "mul",
+          "delta": "-discount",
+          "delay": 0,
+          "note": "让利部分在摊销期内持续侵蚀毛利"
+        }
+      ],
+      "cost": {
+        "one_time_cash_out": "0（但需备案、开票、留痕）",
+        "implicit": [
+          "未来 6~12 个月的收入被提前确认，后续月份'卖不动'会直接暴露"
+        ]
+      },
+      "delay_months": 0,
+      "success_probability": 0.85,
+      "risk": [
+        {
+          "effect": "预收余额变成刚性兑付义务：经营恶化时必须退款，且退款优先级高于供应商"
+        },
+        {
+          "effect": "监管风险：预付卡跑路属高发舆情，一旦被通报即触发 M-RISK-03 上限"
+        },
+        {
+          "effect": "把未来现金流前置，等于用'更差的明天'换'更好的今天'；连续做 2 次基本等于透支一年"
+        }
+      ],
+      "reversibility": "low",
+      "cooldown_months": 12,
+      "tradeoff": "这是单店生意最重要的现金动作，也是最容易变成'跑路'评价的动作。用它换时间可以，用它掩盖亏损不行",
+      "validation_note": "v0.2 新增。校验发现：健身房账面现金 20,316，扣除预收负债后为 -80,714 —— 没有这条动作，沙盒会认为一家已经资不抵债的店'还活着'"
+    },
+    {
+      "id": "A-RISK-01",
+      "name": "合规加固（补资质/上系统/加审核）",
+      "family": "risk",
+      "intent": "监管趋严、已收到整改通知、风险敞口过大",
+      "params": {
+        "spend_months": [
+          0.3,
+          1.5
+        ],
+        "compliance_gain": [
+          10,
+          25
+        ]
+      },
+      "requires": {
+        "cash_min": "spend_months × burn"
+      },
+      "effects": [
+        {
+          "slot": "fixed_cost",
+          "op": "mul",
+          "delta": "+0.03 ~ +0.12",
+          "delay": 2,
+          "profile": "ramp",
+          "ramp_months": 2
+        },
+        {
+          "slot": "compliance",
+          "op": "add",
+          "delta": "+compliance_gain",
+          "delay": 2
+        },
+        {
+          "slot": "capacity",
+          "op": "mul",
+          "delta": "-0.05 ~ -0.15",
+          "delay": 1,
+          "note": "磨合期效率下降"
+        },
+        {
+          "slot": "cash",
+          "op": "add",
+          "delta": "-spend_months × burn",
+          "delay": 2
+        }
+      ],
+      "cost": {
+        "one_time": "系统/资质/培训",
+        "recurring": "持续性合规人力"
+      },
+      "delay_months": 2,
+      "success_probability": 1.0,
+      "risk": [
+        {
+          "effect": "合规投入不产生收入，短期难看"
+        },
+        {
+          "effect": "过度合规会压低效率（capacity 下降）"
+        }
+      ],
+      "reversibility": "high",
+      "cooldown_months": 6,
+      "tradeoff": "看起来是纯支出，实际是买保险；但在合规红线上，保费再贵也得付"
+    },
+    {
+      "id": "A-RISK-02",
+      "name": "危机公关（主动回应/补偿/公示整改）",
+      "family": "risk",
+      "intent": "已发生负面舆情、评分下滑、客户集中投诉",
+      "params": {
+        "spend_months": [
+          0.1,
+          0.5
+        ],
+        "recovery_boost": [
+          0.3,
+          0.6
+        ]
+      },
+      "requires": {
+        "事件发生 <= 1 个月": true
+      },
+      "effects": [
+        {
+          "slot": "reputation",
+          "op": "add",
+          "delta": "+10 ~ +25",
+          "delay": 1
+        },
+        {
+          "slot": "volume",
+          "op": "mul",
+          "delta": "减轻 30%~60% 的负面冲击",
+          "delay": 1
+        },
+        {
+          "slot": "cash",
+          "op": "add",
+          "delta": "-spend_months × burn",
+          "delay": 0
+        }
+      ],
+      "cost": {
+        "one_time": "补偿/公关/整改公示"
+      },
+      "delay_months": 1,
+      "success_probability": 0.6,
+      "risk": [
+        {
+          "effect": "回应不当会二次发酵（概率 20%）"
+        }
+      ],
+      "reversibility": "high",
+      "cooldown_months": 1,
+      "tradeoff": "黄金 1 个月窗口；沉默的代价通常大于回应的代价"
+    },
+    {
+      "id": "A-STR-01",
+      "name": "收缩业务线（砍掉亏损板块）",
+      "family": "strategy",
+      "intent": "多条线互相拖累、现金被亏损板块吸干",
+      "params": {
+        "cut_share": [
+          0.1,
+          0.4
+        ]
+      },
+      "requires": {
+        "存在持续亏损的业务线": true
+      },
+      "effects": [
+        {
+          "slot": "revenue",
+          "op": "mul",
+          "delta": "-cut_share",
+          "delay": 1
+        },
+        {
+          "slot": "fixed_cost",
+          "op": "mul",
+          "delta": "-cut_share × 1.6",
+          "delay": 1
+        },
+        {
+          "slot": "capacity",
+          "op": "mul",
+          "delta": "-cut_share × 0.5",
+          "delay": 1
+        }
+      ],
+      "cost": {
+        "one_time": "遣散/合同违约/客户迁移"
+      },
+      "delay_months": 1,
+      "success_probability": 1.0,
+      "risk": [
+        {
+          "effect": "团队信心受损，'我们是不是要散了'的预期"
+        },
+        {
+          "effect": "留下的业务失去协同，收入下滑超出预期 20%"
+        }
+      ],
+      "reversibility": "low",
+      "cooldown_months": 12,
+      "tradeoff": "砍掉 10% 的收入换 16% 的成本，通常划算；但会向内外释放强烈信号"
+    },
+    {
+      "id": "A-STR-02",
+      "name": "退出/转让",
+      "family": "strategy",
+      "intent": "连续亏损、看不到结构性改善、机会成本过高",
+      "params": {
+        "salvage_ratio": [
+          0.1,
+          0.5
+        ]
+      },
+      "requires": {
+        "runway_months < 6 或 连续 6 个月亏损": true
+      },
+      "effects": [
+        {
+          "slot": "cash",
+          "op": "add",
+          "amount": "已投入资产 × salvage_ratio",
+          "delay": 2
+        },
+        {
+          "slot": "revenue",
+          "op": "set",
+          "value": 0,
+          "delay": 2
+        }
+      ],
+      "cost": {
+        "implicit": [
+          "机会成本已实现",
+          "声誉影响"
+        ]
+      },
+      "delay_months": 2,
+      "success_probability": 0.7,
+      "risk": [
+        {
+          "effect": "退出后若市场回暖，损失全部上行空间"
+        }
+      ],
+      "reversibility": "low",
+      "cooldown_months": 0,
+      "terminal": true,
+      "tradeoff": "退出也是决策；沙盒必须允许它，否则所有结论都会偏向'再撑一下'"
+    }
+  ],
+  "interaction": [
+    {
+      "rule": "动作效果与机理冲击在同一槽位上叠加，不做覆盖",
+      "note": "封路导致 -25% 客流的同时提价，两者相乘，不是取大者"
+    },
+    {
+      "rule": "动作的 risk 字段产出的是'二阶冲击'，按机理库的结算方式生效",
+      "note": "裁员带来的士气下降 = 一次内部生成的 M-RISK-03，只是来源是动作而非新闻"
+    },
+    {
+      "rule": "有冲突的动作不能同月执行，引擎直接拒绝并记录"
+    },
+    {
+      "rule": "带宽用尽后，Agent 只能选择'不动作'——不动作本身也是一个决策"
+    },
+    {
+      "rule": "one_time_cash_out 一律为现金流出（做减法）。实现时若符号做反，每个重动作都会凭空生钱",
+      "note": "这是 v0.1→v0.2 最贵的教训：'重谈租约'曾一次凭空产生 2.5 万现金"
+    },
+    {
+      "rule": "价格类动作先过 elasticity_guard，扩产类先过 capacity_gated，再做结算",
+      "note": "守卫不通过时，引擎返回'不适用'而非'0 效果'；两者在报告里含义完全不同"
+    }
+  ],
+  "cross_industry_validation": {
+    "date": "2026-11-16",
+    "industries": [
+      "独立咖啡店",
+      "自助健身房",
+      "社区中餐店"
+    ],
+    "method": "同一套引擎（只认槽位，零行业分支）+ 三个结构差异最大的行业包",
+    "engine": "scripts/engine.py  /  校验器: scripts/validate_packs.py  /  运行: scripts/run_three.py",
+    "passed": [
+      "19 个动作在三种成本结构下均无需新增语义槽位即可表达",
+      "动作贡献基本可加（叠加损耗仅占组合的 1%~16%），因此性价比排序跨行业成立",
+      "A-GROW-02 开新渠道在三行业全部为正贡献且排名前二 —— 最稳的一条"
+    ],
+    "failed_and_fixed": [
+      {
+        "id": "GAP-05",
+        "title": "one_time 未声明现金流方向",
+        "fix": "字段更名为 one_time_cash_out，并加符号断言"
+      },
+      {
+        "id": "GAP-06",
+        "title": "降某项固定成本未乘该项占比",
+        "fix": "A-COST-02 引入 share_of_fixed，实测高估 2.2~2.9 倍"
+      },
+      {
+        "id": "GAP-07",
+        "title": "价格动作缺弹性守卫",
+        "fix": "A-PRICE-01/02 引入 elasticity_guard；健身房 e=1.10 时提价是负贡献"
+      },
+      {
+        "id": "GAP-08",
+        "title": "人力被当作同质资源",
+        "fix": "A-COST-01 引入 key_person_dependency；中餐店裁员漏判 5.4 万"
+      },
+      {
+        "id": "GAP-09",
+        "title": "加产能被假设为自动带来需求",
+        "fix": "A-CAP-01 改为 volume_gated，仅在利用率≥85% 时转化"
+      },
+      {
+        "id": "GAP-10",
+        "title": "预收/储值完全缺失",
+        "fix": "新增 A-FIN-03；健身房账面现金 2 万，扣负债后实为 -8 万"
+      },
+      {
+        "id": "GAP-11",
+        "title": "品质降级的传导写在 risk 注释里而非公式",
+        "fix": "A-COST-03 引入 quality_visibility；中餐与咖啡同动作符号相反"
+      }
+    ],
+    "still_open": [
+      "churn 语义只对月付成立；年卡（健身房）的续费周期尚未进入结算",
+      "峰值利用率未建模，月均聚合看不见排队，A-CAP-01 的触发条件几乎不可满足",
+      "A-FIN-03 的退款优先级、备案合规未纳入机理库"
+    ]
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "generated_at": "2026-11-16T15:55:31",
+  "actions": {
+    "A-PRICE-01": {
+      "alpha": 1000000.0,
+      "beta": 1e-06,
+      "mean": 1.0,
+      "locked": true
+    },
+    "A-PRICE-02": {
+      "alpha": 1000000.0,
+      "beta": 1e-06,
+      "mean": 1.0,
+      "locked": true
+    },
+    "A-CAP-01": {
+      "alpha": 1000000.0,
+      "beta": 1e-06,
+      "mean": 1.0,
+      "locked": true
+    },
+    "A-COST-01": {
+      "alpha": 1000000.0,
+      "beta": 1e-06,
+      "mean": 1.0,
+      "locked": true
+    },
+    "A-COST-04": {
+      "alpha": 1000000.0,
+      "beta": 1e-06,
+      "mean": 1.0,
+      "locked": true
+    },
+    "A-RISK-01": {
+      "alpha": 1000000.0,
+      "beta": 1e-06,
+      "mean": 1.0,
+      "locked": true
+    },
+    "A-STR-01": {
+      "alpha": 1000000.0,
+      "beta": 1e-06,
+      "mean": 1.0,
+      "locked": true
+    },
+    "A-CAP-02": {
+      "alpha": 1000000.0,
+      "beta": 1e-06,
+      "mean": 1.0,
+      "locked": true
+    },
+    "A-COST-02": {
+      "alpha": 3.0,
+      "beta": 3.0,
+      "mean": 0.5,
+      "locked": false
+    },
+    "A-COST-03": {
+      "alpha": 4.5,
+      "beta": 1.5,
+      "mean": 0.75,
+      "locked": false
+    },
+    "A-STR-02": {
+      "alpha": 4.2,
+      "beta": 1.8,
+      "mean": 0.6999999999999998,
+      "locked": false
+    },
+    "A-GROW-01": {
+      "alpha": 3.2,
+      "beta": 0.8,
+      "mean": 0.8,
+      "locked": false
+    },
+    "A-GROW-02": {
+      "alpha": 4.2,
+      "beta": 1.8,
+      "mean": 0.6999999999999998,
+      "locked": false
+    },
+    "A-GROW-03": {
+      "alpha": 5.0,
+      "beta": 5.0,
+      "mean": 0.5,
+      "locked": false
+    },
+    "A-GROW-04": {
+      "alpha": 2.6,
+      "beta": 1.4,
+      "mean": 0.65,
+      "locked": false
+    },
+    "A-FIN-01": {
+      "alpha": 3.5,
+      "beta": 6.5,
+      "mean": 0.35,
+      "locked": false
+    },
+    "A-FIN-02": {
+      "alpha": 4.8,
+      "beta": 3.2,
+      "mean": 0.6,
+      "locked": false
+    },
+    "A-FIN-03": {
+      "alpha": 5.1,
+      "beta": 0.9,
+      "mean": 0.85,
+      "locked": false
+    },
+    "A-RISK-02": {
+      "alpha": 2.4,
+      "beta": 1.6,
+      "mean": 0.6,
+      "locked": false
+    }
+  }
+}

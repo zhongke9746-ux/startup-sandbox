@@ -1,0 +1,14 @@
+# ── 用户本地数据：不入库 ──
+# 运营记录（会话）与环境快照都只存在用户本地，包含真实经营调研，绝不提交
+sessions/
+snapshots/
+
+# macOS
+.DS_Store
+
+# 构建产物（zip 可用 scripts/pack.py 重新生成）
+dist/
+
+# Python
+__pycache__/
+*.pyc

@@ -1,0 +1,177 @@
+{
+  "meta": {
+    "pack_id": "randomness",
+    "name": "随机性库",
+    "version": "0.2.0",
+    "updated_at": "2026-11-16",
+    "changelog": [
+      "0.1.0 | 2026-11-16 | 初版：5 个随机源 + 动作失败结算引用",
+      "0.1.1 | 2026-11-16 | GAP-MC-04 转为 addressed：成功率校准登记表已落地；新增 --uncertain-p（p 从后验抽样）",
+      "0.2.0 | 2026-11-16 | 新增随机源 6「宏观状态」：三态马尔可夫链调制增长/噪声/事件概率；GAP-MC-01 与 GAP-MC-02 转 addressed"
+    ]
+  },
+  "growth": {
+    "method": "uniform",
+    "source": "pack.baseline.growth_assumption",
+    "note": "咖啡店演算已证明：这是主导结论的变量（-1% 与 +1.5% 之间差 27 万），必须显式抽样"
+  },
+  "event_magnitude": {
+    "method": "triangular",
+    "min": 0.6,
+    "mode": 1.0,
+    "max": 1.4,
+    "rationale": "同一类事件（罚款/封路/涨价）在真实世界的烈度差异大约在这个范围； 校准来源：行政处罚公示的金额分布、历史涨价的幅度分布"
+  },
+  "event_occurrence": {
+    "default_p": 0.8,
+    "per_event_override": "demo_events 条目可写 p: 0.3 覆盖默认值",
+    "note": "不发生 ≠ 没有影响：不发生的事件只是这次没抽到，不是风险不存在"
+  },
+  "event_start_jitter": {
+    "method": "uniform_int",
+    "min": -1,
+    "max": 2,
+    "clamp": [
+      1,
+      24
+    ],
+    "rationale": "晚于 ±2 个月的抖动会改变剧本含义（如'开业第 2 个月封路'变成第 5 个月就是另一个故事）"
+  },
+  "volume_noise": {
+    "method": "normal",
+    "mean": 1.0,
+    "sigma_source": "pack.baseline.demand_volatility",
+    "clip": [
+      0.75,
+      1.25
+    ],
+    "note": "噪声逐月独立抽样；开启宏观状态后，同一状态内会产生持续性（GAP-MC-01 部分缓解）"
+  },
+  "macro_regime": {
+    "enabled": true,
+    "states": {
+      "expansion": {
+        "label": "扩张",
+        "growth_shift": 0.006,
+        "noise_offset": 0.02,
+        "sigma_mult": 0.85,
+        "event_occ_mult": 0.85
+      },
+      "normal": {
+        "label": "平稳",
+        "growth_shift": 0.0,
+        "noise_offset": 0.0,
+        "sigma_mult": 1.0,
+        "event_occ_mult": 1.0
+      },
+      "contraction": {
+        "label": "收缩",
+        "growth_shift": -0.012,
+        "noise_offset": -0.04,
+        "sigma_mult": 1.6,
+        "event_occ_mult": 1.25
+      }
+    },
+    "transition": {
+      "expansion": {
+        "expansion": 0.9,
+        "normal": 0.09,
+        "contraction": 0.01
+      },
+      "normal": {
+        "expansion": 0.08,
+        "normal": 0.8,
+        "contraction": 0.12
+      },
+      "contraction": {
+        "expansion": 0.06,
+        "normal": 0.24,
+        "contraction": 0.7
+      }
+    },
+    "init": "normal",
+    "persistence_note": "收缩态 70% 自持 → 平均持续 3.3 个月；这是'坏年份'能形成的原因， 也是单月独立噪声永远造不出来的东西",
+    "mean_preservation": true,
+    "mean_note": "居中的是输入的窗口加权均值；输出中位仍会小幅下移（实测 -4.7%）， 来源是复利凹性与路径内相关性的交互，见 GAP-MC-06。若移动超过 10%， 先怀疑居中权重用错（不能用平稳分布），再怀疑参数。",
+    "stream": "独立的随机流（run_seed ^ 0xMACR0），保证与关闭时共享同一组环境抽样"
+  },
+  "action_failure": {
+    "probability_source": "_actions.yaml 各动作的 success_probability",
+    "settlement_rule": "_actions.yaml settlement.success_roll",
+    "note": "成功率 1.0 的动作（裁员/削减支出）不需要掷骰——你能不能省下钱不随机，随机的是谈判与增长"
+  },
+  "mc": {
+    "runs": 1000,
+    "seed": 42,
+    "paired_seeds": true,
+    "paired_note": "被动/主动场景共用同一组环境随机种子（common random numbers）， 差异才能归因于动作本身而非运气；动作成败用独立的随机流"
+  },
+  "outputs": [
+    "survival_rate",
+    "bankruptcy_rate",
+    "insolvency_rate",
+    "net_cash_percentiles",
+    "worst_drawdown",
+    "loss_months",
+    "action_value",
+    "regime_occupancy",
+    "regime_concentration"
+  ],
+  "known_gaps": [
+    {
+      "id": "GAP-MC-01",
+      "severity": "medium",
+      "title": "需求噪声无自相关",
+      "detail": "逐月独立抽样意味着不存在'连续三个月坏天气'",
+      "status": "partially_addressed",
+      "resolved_by": "宏观状态层给需求加了状态相关的水平偏移与波动放大（收缩态自持 70%，平均持续 3.3 个月），形成粗粒度的持续性",
+      "residual": "粒度是季度级，不是月级自相关（AR(1)）；且状态是由模型设定的，不是校准出来的"
+    },
+    {
+      "id": "GAP-MC-02",
+      "severity": "medium",
+      "title": "事件之间相互独立",
+      "detail": "现实中事件相关：经济下行时'融资收紧'与'客流下降'会一起来",
+      "status": "addressed",
+      "resolved_by": "宏观状态层调制 event_occurrence（收缩态 ×1.25），同一状态内的多起事件因此正相关；均值为保持中性已按平稳分布居中",
+      "residual": "只做了'何时发生'的相关，没做'烈度'的相关（收缩态的事件同样更重）——留待下一步"
+    },
+    {
+      "id": "GAP-MC-03",
+      "severity": "low",
+      "title": "增长与噪声独立",
+      "detail": "增长率为负的行业往往波动更大（衰退行业的需求更不稳定），当前分开抽样",
+      "fix": "宏观状态层已让两者共用同一个状态（同态内负增长伴随高波动），但仅通过状态间接相关"
+    },
+    {
+      "id": "GAP-MC-04",
+      "severity": "high",
+      "title": "动作成功率是拍脑袋先验",
+      "detail": "重谈租约 50%、新品 50% 没有任何数据来源，只是'避免假装确定'的占位",
+      "status": "addressed",
+      "resolved_by": "_calibration.yaml v0.1.0 + scripts/calibrate.py（08-成功率校准.md）：按 gate_type 分类后删除 8 个伪概率；11 个真门给出操作性成功定义与 Beta 先验；公开数据仅能锚定 4 个，其余依赖反馈闭环",
+      "residual": "真实观测仍为 0 条；分层池化与对照组未做（GAP-CAL-01/02）"
+    },
+    {
+      "id": "GAP-MC-05",
+      "severity": "high",
+      "title": "宏观状态参数没有校准来源",
+      "detail": "三态的转移矩阵与调制幅度是设定的，不是估计的；真实经济周期的状态识别需要宏观指标（PMI/社零/失业）对齐到行业",
+      "fix": "用行业营收指数（如社零分项、餐饮收入同比）做状态标注，再估计转移矩阵"
+    },
+    {
+      "id": "GAP-MC-06",
+      "severity": "low",
+      "title": "开启宏观后中位仍残余 -4.7%，未完全归因",
+      "detail": "已排除居中错误（实测月均增长中性）、产能封顶（放开产能跌幅不变）、链实现（占用差 ≤0.5pp）、状态抽样噪声（路径内重居中后仍剩 -3.4k）；剩余归因为复利凹性与路径内相关性的交互",
+      "fix": "若要做，就用解析式算 E[Π(1+g)] 与模拟对照；量级相对左尾变化（-47%）小一个数量级，暂不处理"
+    },
+    {
+      "id": "GAP-MC-07",
+      "severity": "medium",
+      "title": "只做了事件\"发生概率\"的相关，没做\"烈度\"的相关",
+      "detail": "收缩态里的事件本身也更重，当前 event_magnitude 与状态无关",
+      "fix": "在 event_magnitude 上乘状态系数，并同样按窗口权重居中"
+    }
+  ]
+}

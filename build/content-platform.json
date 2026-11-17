@@ -1,0 +1,1298 @@
+{
+  "meta": {
+    "pack_id": "content-platform",
+    "name": "内容平台类项目规则包",
+    "version": "0.1.0",
+    "updated_at": "2026-11-16",
+    "applies_to": [
+      "ugc_community",
+      "content_moderation_saas",
+      "ai_content_tool",
+      "mcn_service"
+    ],
+    "changelog": [
+      "0.1.0 | 2026-11-16 | 初版：12 条规则、8 条熔断线、5 项评分"
+    ]
+  },
+  "state_schema": {
+    "finance": {
+      "cash": {
+        "type": "number",
+        "unit": "CNY",
+        "init": 3000000,
+        "death_if_below": 0
+      },
+      "burn": {
+        "type": "number",
+        "unit": "CNY/month",
+        "init": 240000
+      },
+      "runway": {
+        "type": "computed",
+        "formula": "cash / max(burn - mrr, 1)",
+        "unit": "month"
+      },
+      "mrr": {
+        "type": "number",
+        "unit": "CNY/month",
+        "init": 96000
+      },
+      "arpu": {
+        "type": "number",
+        "unit": "CNY",
+        "init": 1600
+      },
+      "gm": {
+        "type": "number",
+        "unit": "percent",
+        "init": 58,
+        "range": [
+          0,
+          100
+        ]
+      },
+      "cac": {
+        "type": "number",
+        "unit": "CNY",
+        "init": 4500
+      },
+      "ltv": {
+        "type": "computed",
+        "formula": "arpu * (gm/100) / max(churn/100, 0.005)"
+      },
+      "paying": {
+        "type": "number",
+        "unit": "count",
+        "init": 60
+      }
+    },
+    "growth": {
+      "mau": {
+        "type": "number",
+        "unit": "count",
+        "init": 60
+      },
+      "churn": {
+        "type": "number",
+        "unit": "percent/month",
+        "init": 3.0,
+        "range": [
+          0,
+          100
+        ]
+      },
+      "supply": {
+        "type": "number",
+        "unit": "count/month",
+        "init": 4500
+      },
+      "acc": {
+        "type": "number",
+        "unit": "percent",
+        "init": 96.5,
+        "range": [
+          0,
+          100
+        ]
+      },
+      "fp_rate": {
+        "type": "number",
+        "unit": "percent",
+        "init": 2.1
+      },
+      "fn_rate": {
+        "type": "number",
+        "unit": "percent",
+        "init": 1.4
+      },
+      "tech_debt": {
+        "type": "number",
+        "unit": "index_0_100",
+        "init": 45
+      }
+    },
+    "compliance_reputation": {
+      "compliance": {
+        "type": "number",
+        "unit": "index_0_100",
+        "init": 78
+      },
+      "violations": {
+        "type": "number",
+        "unit": "count",
+        "init": 1
+      },
+      "penalty": {
+        "type": "number",
+        "unit": "CNY",
+        "init": 0
+      },
+      "license": {
+        "type": "enum",
+        "values": [
+          "valid",
+          "warning",
+          "suspended",
+          "revoked"
+        ],
+        "init": "valid"
+      },
+      "reputation": {
+        "type": "number",
+        "unit": "index_0_100",
+        "init": 65
+      },
+      "sentiment": {
+        "type": "number",
+        "unit": "range_-1_1",
+        "init": 0.1
+      },
+      "attention": {
+        "type": "number",
+        "unit": "index_0_3",
+        "init": 1
+      }
+    },
+    "org_capital": {
+      "headcount": {
+        "type": "number",
+        "unit": "person",
+        "init": 12
+      },
+      "morale": {
+        "type": "number",
+        "unit": "index_0_100",
+        "init": 70
+      },
+      "stage": {
+        "type": "enum",
+        "values": [
+          "angel",
+          "pre_a",
+          "a",
+          "b"
+        ],
+        "init": "pre_a"
+      },
+      "confidence": {
+        "type": "number",
+        "unit": "index_0_100",
+        "init": 55
+      }
+    }
+  },
+  "signal_schema": {
+    "required": [
+      "id",
+      "category",
+      "title",
+      "source",
+      "raw_excerpt",
+      "relevance",
+      "credibility"
+    ],
+    "category_enum": [
+      "policy",
+      "platform_rule",
+      "competition",
+      "sentiment",
+      "capital_macro",
+      "tech_supply"
+    ],
+    "source_fields": [
+      "name",
+      "url",
+      "authority",
+      "published_at",
+      "region"
+    ],
+    "authority_scale": "0-4, >=3 为高权威"
+  },
+  "signal_gating": [
+    {
+      "when": "relevance >= 0.6 and credibility >= 0.5",
+      "action": "accept",
+      "weight": 1.0
+    },
+    {
+      "when": "relevance >= 0.3 and category == 'policy' and source.authority >= 3",
+      "action": "accept",
+      "weight": 0.6,
+      "note": "政策类宁可多算"
+    },
+    {
+      "default": null,
+      "action": "drop",
+      "note": "丢弃但保留在信号库中，记录理由"
+    }
+  ],
+  "impact_schema": {
+    "fields": {
+      "rule_id": "string",
+      "hit": "list of {var, op(mul|add|set), value}",
+      "magnitude_note": "LLM 必须在规则区间内选档并给出原文依据",
+      "time_profile": "step | ramp | pulse",
+      "ramp_months": "仅 ramp 用",
+      "tau_months": "仅 pulse 用，默认 2",
+      "confidence": "0-1",
+      "evidence": "原文片段"
+    },
+    "settlement": {
+      "multiplicative": "value_t = value_base * prod(1 + impact_i * decay_i(t) * confidence_i)",
+      "additive": "cash_t = cash_t - sum(amount_i * confidence_i)",
+      "decay": {
+        "step": 1,
+        "ramp": "min(1, t / ramp_months)",
+        "pulse": "0.5 ^ (t / tau_months)"
+      }
+    }
+  },
+  "rules": [
+    {
+      "id": "R-POL-01",
+      "name": "生成式AI内容标识强制要求",
+      "category": "policy",
+      "match": {
+        "keywords_any": [
+          "标识",
+          "水印",
+          "生成式",
+          "合成内容",
+          "深度合成"
+        ],
+        "doc_types": [
+          "征求意见稿",
+          "管理办法",
+          "规定",
+          "通知"
+        ]
+      },
+      "hits": [
+        {
+          "var": "cash",
+          "op": "add",
+          "range": [
+            -400000,
+            -150000
+          ],
+          "profile": "ramp",
+          "ramp_months": 3
+        },
+        {
+          "var": "burn",
+          "op": "mul",
+          "range": [
+            0.08,
+            0.15
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "acc",
+          "op": "add",
+          "range": [
+            -5,
+            -3
+          ],
+          "profile": "ramp",
+          "ramp_months": 2,
+          "note": "磨合期后恢复"
+        },
+        {
+          "var": "tech_debt",
+          "op": "add",
+          "range": [
+            10,
+            20
+          ],
+          "profile": "step"
+        }
+      ],
+      "second_order": [
+        {
+          "trigger": "after effective_date and compliance < 70",
+          "effects": [
+            {
+              "var": "violations",
+              "op": "add",
+              "value": 1
+            },
+            {
+              "var": "attention",
+              "op": "add",
+              "value": 1
+            },
+            {
+              "var": "penalty",
+              "op": "add",
+              "range": [
+                50000,
+                500000
+              ]
+            }
+          ]
+        }
+      ],
+      "llm_tiering": "征求意见稿取低档；正式实施且含明确罚则取高档",
+      "audit": [
+        "政策原文段",
+        "生效日",
+        "我方改造完成度"
+      ]
+    },
+    {
+      "id": "R-POL-02",
+      "name": "未成年人保护加码",
+      "category": "policy",
+      "match": {
+        "keywords_any": [
+          "未成年人",
+          "青少年模式",
+          "实名",
+          "防沉迷",
+          "内容分级"
+        ]
+      },
+      "hits": [
+        {
+          "var": "mau",
+          "op": "mul",
+          "range": [
+            -0.15,
+            -0.08
+          ],
+          "profile": "ramp",
+          "ramp_months": 2
+        },
+        {
+          "var": "churn",
+          "op": "mul",
+          "range": [
+            0.2,
+            0.5
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "burn",
+          "op": "mul",
+          "range": [
+            0.05,
+            0.12
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "compliance",
+          "op": "add",
+          "range": [
+            5,
+            10
+          ],
+          "profile": "step"
+        }
+      ],
+      "llm_tiering": "C 端用户占比高取上限（流失更重）；B 端为主取下限",
+      "audit": [
+        "受影响年龄段占比假设"
+      ]
+    },
+    {
+      "id": "R-POL-03",
+      "name": "数据合规（个人信息/跨境/算法备案）",
+      "category": "policy",
+      "match": {
+        "keywords_any": [
+          "个人信息",
+          "数据出境",
+          "跨境",
+          "算法备案",
+          "数据安全",
+          "本地化存储"
+        ]
+      },
+      "hits": [
+        {
+          "var": "cash",
+          "op": "add",
+          "range": [
+            -600000,
+            -80000
+          ],
+          "profile": "ramp",
+          "ramp_months": 3
+        },
+        {
+          "var": "burn",
+          "op": "mul",
+          "range": [
+            0.04,
+            0.1
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "license",
+          "op": "set",
+          "value": "warning",
+          "profile": "step",
+          "note": "未按期备案场景"
+        },
+        {
+          "var": "mau",
+          "op": "mul",
+          "range": [
+            -0.1,
+            0.0
+          ],
+          "profile": "pulse",
+          "tau_months": 2
+        }
+      ],
+      "second_order": [
+        {
+          "trigger": "license == warning",
+          "effects": [
+            {
+              "var": "confidence",
+              "op": "add",
+              "value": -10
+            }
+          ]
+        }
+      ],
+      "audit": [
+        "是否已完成算法备案",
+        "数据流向图"
+      ]
+    },
+    {
+      "id": "R-PLT-01",
+      "name": "上游平台接口/分发权限收紧",
+      "category": "platform_rule",
+      "match": {
+        "keywords_any": [
+          "接口调整",
+          "权限收紧",
+          "配额",
+          "审核",
+          "下架",
+          "开放平台",
+          "分发规则"
+        ]
+      },
+      "hits": [
+        {
+          "var": "cac",
+          "op": "mul",
+          "range": [
+            0.25,
+            0.6
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "mau",
+          "op": "mul",
+          "range": [
+            -0.3,
+            -0.1
+          ],
+          "profile": "ramp",
+          "ramp_months": 2
+        },
+        {
+          "var": "burn",
+          "op": "mul",
+          "range": [
+            0.0,
+            0.08
+          ],
+          "profile": "step"
+        }
+      ],
+      "second_order": [
+        {
+          "trigger": "channel_dependency > 0.5",
+          "effects": [
+            {
+              "var": "tech_debt",
+              "op": "add",
+              "value": 15
+            },
+            {
+              "var": "mau",
+              "op": "mul",
+              "range": [
+                -0.05,
+                0.0
+              ],
+              "profile": "step",
+              "note": "渠道重构期增长停滞"
+            }
+          ]
+        }
+      ],
+      "audit": [
+        "渠道结构假设：自然/导流/投放占比"
+      ]
+    },
+    {
+      "id": "R-PLT-02",
+      "name": "平台分成/结算规则调整",
+      "category": "platform_rule",
+      "match": {
+        "keywords_any": [
+          "分成",
+          "结算",
+          "技术服务费",
+          "佣金",
+          "账期"
+        ]
+      },
+      "hits": [
+        {
+          "var": "gm",
+          "op": "add",
+          "range": [
+            -12,
+            -5
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "mrr",
+          "op": "mul",
+          "range": [
+            -0.15,
+            -0.05
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "cash",
+          "op": "add",
+          "formula": "-mrr * 1.5",
+          "profile": "pulse",
+          "tau_months": 2,
+          "note": "账期拉长占用现金"
+        }
+      ],
+      "audit": [
+        "结算周期变化",
+        "收入结构"
+      ]
+    },
+    {
+      "id": "R-SEN-01",
+      "name": "内容安全事故引发负面舆情",
+      "category": "sentiment",
+      "match": {
+        "keywords_any": [
+          "审核失职",
+          "低俗",
+          "违规内容",
+          "未成年人",
+          "事故",
+          "曝光",
+          "投诉"
+        ]
+      },
+      "precondition": "fn_rate > 2.0 or 已发生内容安全事件",
+      "hits": [
+        {
+          "var": "reputation",
+          "op": "add",
+          "range": [
+            -35,
+            -15
+          ],
+          "profile": "pulse",
+          "tau_months": 2
+        },
+        {
+          "var": "mau",
+          "op": "mul",
+          "range": [
+            -0.4,
+            -0.15
+          ],
+          "profile": "pulse",
+          "tau_months": 2
+        },
+        {
+          "var": "attention",
+          "op": "add",
+          "value": 1,
+          "profile": "step"
+        },
+        {
+          "var": "burn",
+          "op": "mul",
+          "range": [
+            0.05,
+            0.1
+          ],
+          "profile": "ramp",
+          "ramp_months": 1
+        }
+      ],
+      "second_order": [
+        {
+          "trigger": "t + 1 month",
+          "effects": [
+            {
+              "var": "cac",
+              "op": "mul",
+              "range": [
+                0.1,
+                0.2
+              ],
+              "note": "应用商店评分下降，自然流量下滑"
+            }
+          ]
+        },
+        {
+          "trigger": "t + 2 month",
+          "effects": [
+            {
+              "var": "churn",
+              "op": "mul",
+              "range": [
+                0.2,
+                0.4
+              ]
+            }
+          ]
+        }
+      ],
+      "llm_tiering": "我方响应超 48 小时取上限",
+      "audit": [
+        "事件起因",
+        "传播量级",
+        "响应时效"
+      ]
+    },
+    {
+      "id": "R-SEN-02",
+      "name": "误杀导致创作者/客户迁移",
+      "category": "sentiment",
+      "match": {
+        "keywords_any": [
+          "误杀",
+          "误判",
+          "无故拦截",
+          "申诉",
+          "创作者流失",
+          "封号"
+        ]
+      },
+      "precondition": "fp_rate > baseline * 1.3",
+      "hits": [
+        {
+          "var": "supply",
+          "op": "mul",
+          "range": [
+            -0.25,
+            -0.1
+          ],
+          "profile": "ramp",
+          "ramp_months": 2
+        },
+        {
+          "var": "churn",
+          "op": "mul",
+          "range": [
+            0.15,
+            0.4
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "mau",
+          "op": "mul",
+          "range": [
+            -0.15,
+            -0.05
+          ],
+          "profile": "ramp",
+          "ramp_months": 3
+        }
+      ],
+      "second_order": [
+        {
+          "trigger": "t + 2 month",
+          "effects": [
+            {
+              "var": "churn",
+              "op": "mul",
+              "range": [
+                0.05,
+                0.15
+              ],
+              "note": "供给萎缩→生态质量下降→留存恶化，形成负循环"
+            }
+          ]
+        }
+      ],
+      "audit": [
+        "误杀率相对基线偏离幅度"
+      ]
+    },
+    {
+      "id": "R-MKT-01",
+      "name": "竞品降价/免费化",
+      "category": "competition",
+      "match": {
+        "keywords_any": [
+          "免费",
+          "降价",
+          "补贴",
+          "价格战",
+          "新版本发布"
+        ]
+      },
+      "hits": [
+        {
+          "var": "churn",
+          "op": "mul",
+          "range": [
+            0.3,
+            0.8
+          ],
+          "profile": "ramp",
+          "ramp_months": 2
+        },
+        {
+          "var": "arpu",
+          "op": "mul",
+          "range": [
+            -0.25,
+            -0.1
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "cac",
+          "op": "mul",
+          "range": [
+            0.2,
+            0.5
+          ],
+          "profile": "step"
+        }
+      ],
+      "decision_point": {
+        "options": [
+          {
+            "id": "follow_price_cut",
+            "effects": [
+              {
+                "var": "gm",
+                "op": "add",
+                "range": [
+                  -12,
+                  -8
+                ]
+              }
+            ]
+          },
+          {
+            "id": "hold_price",
+            "effects": [
+              {
+                "var": "churn",
+                "op": "mul",
+                "range": [
+                  1.0,
+                  1.3
+                ],
+                "note": "不跟进则流失取上限再叠加"
+              }
+            ]
+          }
+        ],
+        "note": "这是经营 Agent 的真实取舍点，不预设答案"
+      },
+      "audit": [
+        "竞品定价",
+        "我方价格带"
+      ]
+    },
+    {
+      "id": "R-MKT-02",
+      "name": "大厂入场",
+      "category": "competition",
+      "match": {
+        "keywords_any": [
+          "大厂",
+          "巨头",
+          "正式发布",
+          "战略级投入",
+          "独立事业部"
+        ]
+      },
+      "hits": [
+        {
+          "var": "confidence",
+          "op": "add",
+          "range": [
+            -30,
+            -15
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "mau",
+          "op": "mul",
+          "range": [
+            -0.25,
+            -0.1
+          ],
+          "profile": "ramp",
+          "ramp_months": 3
+        },
+        {
+          "var": "cac",
+          "op": "mul",
+          "range": [
+            0.3,
+            0.7
+          ],
+          "profile": "step"
+        }
+      ],
+      "second_order": [
+        {
+          "trigger": "next_funding_round",
+          "effects": [
+            {
+              "var": "valuation",
+              "op": "mul",
+              "range": [
+                -0.4,
+                -0.2
+              ]
+            }
+          ]
+        }
+      ],
+      "audit": [
+        "入场方资源量级",
+        "差异化壁垒"
+      ]
+    },
+    {
+      "id": "R-CAP-01",
+      "name": "一级市场融资环境收紧",
+      "category": "capital_macro",
+      "match": {
+        "keywords_any": [
+          "融资总额",
+          "募资困难",
+          "退出",
+          "估值回调",
+          "投资人谨慎"
+        ]
+      },
+      "hits": [
+        {
+          "var": "confidence",
+          "op": "add",
+          "range": [
+            -25,
+            -10
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "funding_success_rate",
+          "op": "mul",
+          "range": [
+            -0.5,
+            -0.3
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "funding_valuation",
+          "op": "mul",
+          "range": [
+            -0.35,
+            -0.2
+          ],
+          "profile": "step"
+        }
+      ],
+      "second_order": [
+        {
+          "trigger": "runway < 6 and funding_failed",
+          "effects": [
+            {
+              "var": "headcount",
+              "op": "mul",
+              "range": [
+                -0.4,
+                -0.2
+              ]
+            },
+            {
+              "var": "morale",
+              "op": "add",
+              "range": [
+                -20,
+                -10
+              ]
+            },
+            {
+              "var": "supply",
+              "op": "mul",
+              "range": [
+                -0.2,
+                -0.1
+              ]
+            },
+            {
+              "note": "强制降本模式"
+            }
+          ]
+        }
+      ],
+      "audit": [
+        "行业融资数据",
+        "我方 runway"
+      ]
+    },
+    {
+      "id": "R-TEC-01",
+      "name": "底层模型 API 降价（正面）",
+      "category": "tech_supply",
+      "match": {
+        "keywords_any": [
+          "降价",
+          "价格下调",
+          "免费额度",
+          "新版本更便宜"
+        ]
+      },
+      "hits": [
+        {
+          "var": "gm",
+          "op": "add",
+          "range": [
+            3,
+            8
+          ],
+          "profile": "step"
+        }
+      ],
+      "decision_point": {
+        "options": [
+          {
+            "id": "keep_price",
+            "effects": [
+              {
+                "var": "gm",
+                "op": "add",
+                "range": [
+                  3,
+                  8
+                ]
+              }
+            ]
+          },
+          {
+            "id": "pass_through",
+            "effects": [
+              {
+                "var": "arpu",
+                "op": "mul",
+                "range": [
+                  -0.15,
+                  -0.08
+                ]
+              },
+              {
+                "var": "mau",
+                "op": "mul",
+                "range": [
+                  0.1,
+                  0.2
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "audit": [
+        "模型供应商",
+        "调用成本占比"
+      ]
+    },
+    {
+      "id": "R-TEC-02",
+      "name": "底层模型/云服务涨价或停服",
+      "category": "tech_supply",
+      "match": {
+        "keywords_any": [
+          "涨价",
+          "调价",
+          "限流",
+          "下线",
+          "停服",
+          "迁移",
+          "废弃"
+        ]
+      },
+      "hits": [
+        {
+          "var": "gm",
+          "op": "add",
+          "range": [
+            -15,
+            -5
+          ],
+          "profile": "step"
+        },
+        {
+          "var": "tech_debt",
+          "op": "add",
+          "range": [
+            10,
+            25
+          ],
+          "profile": "ramp",
+          "ramp_months": 2
+        },
+        {
+          "var": "acc",
+          "op": "add",
+          "range": [
+            -3,
+            -1
+          ],
+          "profile": "pulse",
+          "tau_months": 2
+        }
+      ],
+      "second_order": [
+        {
+          "trigger": "vendor_dependency > 0.7",
+          "effects": [
+            {
+              "var": "burn",
+              "op": "mul",
+              "range": [
+                0.05,
+                0.1
+              ]
+            },
+            {
+              "var": "supply",
+              "op": "mul",
+              "range": [
+                -0.1,
+                0.0
+              ],
+              "note": "迁移期交付延迟"
+            }
+          ]
+        }
+      ],
+      "audit": [
+        "供应商依赖度",
+        "备用方案"
+      ]
+    }
+  ],
+  "circuit_breakers": [
+    {
+      "id": "CB-01",
+      "name": "破产",
+      "when": "cash < 0",
+      "action": "terminate",
+      "outcome": "资金链断裂"
+    },
+    {
+      "id": "CB-02",
+      "name": "现金危机",
+      "when": "runway < 3 and funding_not_secured",
+      "action": "force_mode",
+      "effects": [
+        {
+          "var": "headcount",
+          "op": "mul",
+          "range": [
+            -0.4,
+            -0.2
+          ]
+        },
+        {
+          "var": "morale",
+          "op": "add",
+          "value": -15
+        },
+        {
+          "var": "supply",
+          "op": "mul",
+          "value": -0.15
+        }
+      ]
+    },
+    {
+      "id": "CB-03",
+      "name": "合规黄线",
+      "when": "compliance < 45",
+      "action": "event",
+      "effects": [
+        {
+          "var": "attention",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "burn",
+          "op": "mul",
+          "value": 0.05
+        }
+      ]
+    },
+    {
+      "id": "CB-04",
+      "name": "合规红线",
+      "when": "compliance < 30 or license == suspended",
+      "action": "suspend",
+      "effects": [
+        {
+          "var": "mrr",
+          "op": "set",
+          "value": 0,
+          "duration_months": [
+            1,
+            3
+          ]
+        },
+        {
+          "var": "reputation",
+          "op": "add",
+          "value": -20
+        }
+      ]
+    },
+    {
+      "id": "CB-05",
+      "name": "资质吊销",
+      "when": "license == revoked",
+      "action": "terminate",
+      "outcome": "资质失守"
+    },
+    {
+      "id": "CB-06",
+      "name": "声誉危机",
+      "when": "reputation < 35",
+      "action": "degraded",
+      "effects": [
+        {
+          "var": "churn",
+          "op": "mul",
+          "value": 2.0,
+          "release": "reputation >= 50"
+        },
+        {
+          "var": "cac",
+          "op": "mul",
+          "value": 1.4
+        }
+      ]
+    },
+    {
+      "id": "CB-07",
+      "name": "质量红线",
+      "when": "fn_rate > 3",
+      "action": "probabilistic_event",
+      "formula": "p_trigger_R-SEN-01 = min(0.8, (fn_rate - 3) * 8 / 100)"
+    },
+    {
+      "id": "CB-08",
+      "name": "团队崩解",
+      "when": "morale < 40 for 2 consecutive months",
+      "action": "event",
+      "effects": [
+        {
+          "var": "headcount",
+          "op": "mul",
+          "value": -0.1
+        },
+        {
+          "var": "acc",
+          "op": "add",
+          "value": -3
+        },
+        {
+          "var": "tech_debt",
+          "op": "add",
+          "value": 15
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "horizon_months": 24,
+    "weights": {
+      "survival": 0.3,
+      "unit_economics": 0.2,
+      "compliance_resilience": 0.2,
+      "growth": 0.15,
+      "capital_efficiency": 0.15
+    },
+    "components": {
+      "survival": {
+        "type": "linear",
+        "full_score_when": "alive_at_end and runway >= 6",
+        "zero_when": "bankrupt_within_12_months"
+      },
+      "unit_economics": {
+        "metric": "ltv / cac",
+        "full_score_when": ">= 3.0",
+        "zero_when": "<= 1.0",
+        "cap_above": 5.0
+      },
+      "compliance_resilience": {
+        "formula": "compliance_end*0.4 + (100 - compliance_min)*0.2 + resolution_rate*100*0.2 + max(0, 100 - penalty_events*20)*0.2",
+        "zero_when": "triggered CB-04 (停业整改)"
+      },
+      "growth": {
+        "metric": "annualized_mrr_growth adjusted by churn",
+        "full_score_when": ">= 1.0 (100%)",
+        "zero_when": "<= 0"
+      },
+      "capital_efficiency": {
+        "metric": "cumulative_cash_consumed / ending_arr",
+        "full_score_when": "<= 1.0",
+        "zero_when": ">= 4.0"
+      }
+    },
+    "grades": [
+      {
+        "min": 75,
+        "label": "高可行",
+        "advice": "条件具备，可推进"
+      },
+      {
+        "min": 60,
+        "label": "有条件可行",
+        "advice": "需先解决 1-2 个关键脆弱项"
+      },
+      {
+        "min": 45,
+        "label": "高风险",
+        "advice": "失败模式明确，建议改变条件重跑"
+      },
+      {
+        "min": 0,
+        "label": "不建议",
+        "advice": "在当前信息截面下不具备成立条件"
+      }
+    ]
+  }
+}

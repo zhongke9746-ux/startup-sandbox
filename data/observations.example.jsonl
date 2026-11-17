@@ -1,0 +1,12 @@
+{"action_id":"A-COST-02","outcome":"failure","industry":"cafe","source":"synthetic_demo","date":"2026-11-16","note":"示例数据，仅用于验证更新机制，不是真实观测"}
+{"action_id":"A-COST-02","outcome":"failure","industry":"cafe","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}
+{"action_id":"A-COST-02","outcome":"failure","industry":"cafe","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}
+{"action_id":"A-COST-02","outcome":"failure","industry":"cafe","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}
+{"action_id":"A-COST-02","outcome":"failure","industry":"cafe","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}
+{"action_id":"A-COST-02","outcome":"success","industry":"cafe","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}
+{"action_id":"A-COST-02","outcome":"success","industry":"cafe","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}
+{"action_id":"A-COST-02","outcome":"success","industry":"cafe","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}
+{"action_id":"A-GROW-03","outcome":"failure","industry":"cnrest","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}
+{"action_id":"A-GROW-03","outcome":"failure","industry":"cnrest","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}
+{"action_id":"A-GROW-03","outcome":"success","industry":"cnrest","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}
+{"action_id":"A-GROW-03","outcome":"success","industry":"cnrest","source":"synthetic_demo","date":"2026-11-16","note":"示例数据"}

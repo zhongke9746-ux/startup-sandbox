@@ -1,0 +1,190 @@
+# ─────────────────────────────────────────────────────────────
+# 随机性库 v0.1.0 —— 蒙特卡洛层的分布声明
+#
+# 定位：确定性引擎（engine.py）不承认随机数；所有随机性在这里声明，
+# 由 monte_carlo.py 在"输入侧"注入（扰动事件/增长/噪声/动作成败），
+# 再调用同一个确定性引擎结算。
+#
+# 为什么随机性必须单独成库，而不是写死在脚本里：
+#   1) 分布参数也是"规则"，和机理、动作一样需要版本化和评审
+#   2) 将来接真实数据校准时，只改这个文件
+#   3) 审计者能一眼看到"哪些东西被当成随机的、用的什么分布"
+# ─────────────────────────────────────────────────────────────
+meta:
+  pack_id: randomness
+  name: 随机性库
+  version: 0.2.0
+  updated_at: "2026-11-16"
+  changelog:
+    - "0.1.0 | 2026-11-16 | 初版：5 个随机源 + 动作失败结算引用"
+    - "0.1.1 | 2026-11-16 | GAP-MC-04 转为 addressed：成功率校准登记表已落地；新增 --uncertain-p（p 从后验抽样）"
+    - "0.2.0 | 2026-11-16 | 新增随机源 6「宏观状态」：三态马尔可夫链调制增长/噪声/事件概率；GAP-MC-01 与 GAP-MC-02 转 addressed"
+
+# ───────────── 随机源 1：增长率 ─────────────
+# 从行业包的 growth_assumption 区间均匀抽样。
+# 用均匀而非正态：区间本身就是"我们只知道大概范围"的诚实表达，
+# 假装知道分布形状是比不知道更严重的错误。
+growth:
+  method: uniform
+  source: pack.baseline.growth_assumption
+  note: "咖啡店演算已证明：这是主导结论的变量（-1% 与 +1.5% 之间差 27 万），必须显式抽样"
+
+# ───────────── 随机源 2：事件量级 ─────────────
+# 每条已编排事件的 delta 乘一个随机系数。
+# 三角分布：有界、众数明确、不需要假装知道尾部。
+event_magnitude:
+  method: triangular
+  min: 0.6
+  mode: 1.0
+  max: 1.4
+  rationale: "同一类事件（罚款/封路/涨价）在真实世界的烈度差异大约在这个范围；
+              校准来源：行政处罚公示的金额分布、历史涨价的幅度分布"
+
+# ───────────── 随机源 3：事件是否发生 ─────────────
+# 已编排事件不是必然发生的。默认发生概率 0.8（演示剧本里的事件是
+# "该行业 24 个月内大概率会遇见的事"），可在事件上用 p 字段覆盖。
+event_occurrence:
+  default_p: 0.8
+  per_event_override: "demo_events 条目可写 p: 0.3 覆盖默认值"
+  note: "不发生 ≠ 没有影响：不发生的事件只是这次没抽到，不是风险不存在"
+
+# ───────────── 随机源 4：事件时间抖动 ─────────────
+# 事件月份 ±jitter，模拟"同样的事，早来两个月还是晚来两个月"。
+# 时序差异会改变它与动作的叠加顺序，从而改变结局（现金见底时来罚款 ≠ 宽裕时来）。
+event_start_jitter:
+  method: uniform_int
+  min: -1
+  max: 2
+  clamp: [1, 24]
+  rationale: "晚于 ±2 个月的抖动会改变剧本含义（如'开业第 2 个月封路'变成第 5 个月就是另一个故事）"
+
+# ───────────── 随机源 5：月度需求噪声 ─────────────
+# 即使没有任何事件，真实门店的月客流也不是一条直线。
+# σ 来自行业包 demand_volatility（订阅制低、到店业态高）。
+# 有界截断：单月 ±25% 以上的波动应被建模为"事件"，而不是噪声。
+volume_noise:
+  method: normal
+  mean: 1.0
+  sigma_source: pack.baseline.demand_volatility
+  clip: [0.75, 1.25]
+  note: "噪声逐月独立抽样；开启宏观状态后，同一状态内会产生持续性（GAP-MC-01 部分缓解）"
+
+# ───────────── 随机源 6：宏观状态（系统性风险）─────────────
+# 这是 v0.2 最重要的一处改动，动机来自 GAP-MC-02：
+# 现实里的事件不是独立的——经济下行时"融资收紧""客流下降""平台涨佣"会一起来。
+# 独立抽样永远造不出"全都不顺的一年"，所以左尾被系统性低估。
+#
+# 做法：一条隐藏的三态马尔可夫链，逐月决定"今年是什么年头"，
+# 由它同时调制三件事：增长率、需求水平与波动、事件发生概率。
+# 一个机制，同时给事件加了相关性、给噪声加了自相关。
+#
+# 关键是"只加相关性、不加漂移"：所有调制量按**窗口内期望占用**居中（脚本自动计算，
+# v0.2.0 首版误用平稳分布，导致 24 个月窗口出现 -19% 的中位漂移）。
+# 居中后均值中性、方差与左尾变宽。否则就是在偷偷改假设。
+macro_regime:
+  enabled: true
+  states:
+    expansion:
+      label: 扩张
+      growth_shift:    +0.006     # 月增长率加成（居中前）
+      noise_offset:    +0.02      # 需求水平偏移
+      sigma_mult:       0.85      # 波动缩小：景气时生意更可预测
+      event_occ_mult:   0.85      # 坏事更少发生
+    normal:
+      label: 平稳
+      growth_shift:     0.000
+      noise_offset:     0.00
+      sigma_mult:       1.00
+      event_occ_mult:   1.00
+    contraction:
+      label: 收缩
+      growth_shift:    -0.012
+      noise_offset:    -0.04
+      sigma_mult:       1.60      # 波动放大：坏年份的坏月份更坏
+      event_occ_mult:   1.25
+  transition:                      # 行 = 当月状态，列 = 下月状态
+    expansion:   { expansion: 0.90, normal: 0.09, contraction: 0.01 }
+    normal:      { expansion: 0.08, normal: 0.80, contraction: 0.12 }
+    contraction: { expansion: 0.06, normal: 0.24, contraction: 0.70 }
+  init: normal
+  persistence_note: "收缩态 70% 自持 → 平均持续 3.3 个月；这是'坏年份'能形成的原因，
+                     也是单月独立噪声永远造不出来的东西"
+  mean_preservation: true
+  mean_note: "居中的是输入的窗口加权均值；输出中位仍会小幅下移（实测 -4.7%），
+              来源是复利凹性与路径内相关性的交互，见 GAP-MC-06。若移动超过 10%，
+              先怀疑居中权重用错（不能用平稳分布），再怀疑参数。"
+  stream: "独立的随机流（run_seed ^ 0xMACR0），保证与关闭时共享同一组环境抽样"
+
+# ───────────── 动作失败 ─────────────
+# 成功率与失败结算不在此定义——它们已在 _actions.yaml 声明：
+#   每个动作的 success_probability（0.35 ~ 1.0）
+#   settlement.success_roll：失败则 cost × 0.5，effects 不生效
+# 本层只做一件事：掷骰子，然后把结果翻译成引擎的 failed 标记。
+action_failure:
+  probability_source: "_actions.yaml 各动作的 success_probability"
+  settlement_rule: "_actions.yaml settlement.success_roll"
+  note: "成功率 1.0 的动作（裁员/削减支出）不需要掷骰——你能不能省下钱不随机，随机的是谈判与增长"
+
+# ───────────── 运行参数 ─────────────
+mc:
+  runs: 1000
+  seed: 42
+  paired_seeds: true
+  paired_note: "被动/主动场景共用同一组环境随机种子（common random numbers），
+                差异才能归因于动作本身而非运气；动作成败用独立的随机流"
+
+# ───────────── 输出指标 ─────────────
+outputs:
+  - survival_rate        # 现金全程 ≥ 0 的路径占比
+  - bankruptcy_rate      # 任一月份现金 < 0 的路径占比
+  - insolvency_rate      # 任一月份净资产 < 0 的路径占比（预收行业的常态）
+  - net_cash_percentiles # 期末净现金 p5/p25/p50/p75/p95/mean
+  - worst_drawdown       # 路径最低净现金的 p5/p50/p95
+  - loss_months          # 亏损月数分布
+  - action_value         # 配对差值：主动 - 被动（同一环境种子下）
+  - regime_occupancy     # 宏观状态占用（扩张/平稳/收缩各占多少月）
+  - regime_concentration # 最差 5% 路径中"收缩态月份占比" vs 全体 —— 系统性风险的证据
+
+# ───────────── 已知缺口 ─────────────
+known_gaps:
+  - id: GAP-MC-01
+    severity: medium
+    title: 需求噪声无自相关
+    detail: "逐月独立抽样意味着不存在'连续三个月坏天气'"
+    status: partially_addressed
+    resolved_by: "宏观状态层给需求加了状态相关的水平偏移与波动放大（收缩态自持 70%，平均持续 3.3 个月），形成粗粒度的持续性"
+    residual: "粒度是季度级，不是月级自相关（AR(1)）；且状态是由模型设定的，不是校准出来的"
+  - id: GAP-MC-02
+    severity: medium
+    title: 事件之间相互独立
+    detail: "现实中事件相关：经济下行时'融资收紧'与'客流下降'会一起来"
+    status: addressed
+    resolved_by: "宏观状态层调制 event_occurrence（收缩态 ×1.25），同一状态内的多起事件因此正相关；均值为保持中性已按平稳分布居中"
+    residual: "只做了'何时发生'的相关，没做'烈度'的相关（收缩态的事件同样更重）——留待下一步"
+  - id: GAP-MC-03
+    severity: low
+    title: 增长与噪声独立
+    detail: "增长率为负的行业往往波动更大（衰退行业的需求更不稳定），当前分开抽样"
+    fix: "宏观状态层已让两者共用同一个状态（同态内负增长伴随高波动），但仅通过状态间接相关"
+  - id: GAP-MC-04
+    severity: high
+    title: 动作成功率是拍脑袋先验
+    detail: "重谈租约 50%、新品 50% 没有任何数据来源，只是'避免假装确定'的占位"
+    status: addressed
+    resolved_by: "_calibration.yaml v0.1.0 + scripts/calibrate.py（08-成功率校准.md）：按 gate_type 分类后删除 8 个伪概率；11 个真门给出操作性成功定义与 Beta 先验；公开数据仅能锚定 4 个，其余依赖反馈闭环"
+    residual: "真实观测仍为 0 条；分层池化与对照组未做（GAP-CAL-01/02）"
+  - id: GAP-MC-05
+    severity: high
+    title: 宏观状态参数没有校准来源
+    detail: "三态的转移矩阵与调制幅度是设定的，不是估计的；真实经济周期的状态识别需要宏观指标（PMI/社零/失业）对齐到行业"
+    fix: "用行业营收指数（如社零分项、餐饮收入同比）做状态标注，再估计转移矩阵"
+  - id: GAP-MC-06
+    severity: low
+    title: 开启宏观后中位仍残余 -4.7%，未完全归因
+    detail: "已排除居中错误（实测月均增长中性）、产能封顶（放开产能跌幅不变）、链实现（占用差 ≤0.5pp）、状态抽样噪声（路径内重居中后仍剩 -3.4k）；剩余归因为复利凹性与路径内相关性的交互"
+    fix: "若要做，就用解析式算 E[Π(1+g)] 与模拟对照；量级相对左尾变化（-47%）小一个数量级，暂不处理"
+  - id: GAP-MC-07
+    severity: medium
+    title: 只做了事件"发生概率"的相关，没做"烈度"的相关
+    detail: "收缩态里的事件本身也更重，当前 event_magnitude 与状态无关"
+    fix: "在 event_magnitude 上乘状态系数，并同样按窗口权重居中"
